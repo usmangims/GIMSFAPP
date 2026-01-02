@@ -94,26 +94,30 @@ export const StudentBiodata = ({ students, onAddStudent, onDeleteStudent, onUpda
         setAvailableSemesters(allowedSems);
         setAvailableCampuses(allowedCampuses);
         
-        setFormData(prev => ({
-            ...prev,
-            program: progs.includes(prev.program) ? prev.program : "",
-            semester: allowedSems.includes(prev.semester) ? prev.semester : "",
-            campus: allowedCampuses.some((c:Campus) => c.name === prev.campus) ? prev.campus : (allowedCampuses[0]?.name || prev.campus)
-        }));
+        if (!editMode) {
+            setFormData(prev => ({
+                ...prev,
+                program: progs.includes(prev.program) ? prev.program : "",
+                semester: allowedSems.includes(prev.semester) ? prev.semester : "",
+                campus: allowedCampuses.some((c:Campus) => c.name === prev.campus) ? prev.campus : (allowedCampuses[0]?.name || prev.campus)
+            }));
+        }
 
-     } else {
+     } else if (!editMode) {
         setAvailablePrograms(masterData.programs);
         setAvailableSemesters(masterData.semesters);
         setAvailableCampuses(masterData.campuses);
      }
-  }, [formData.board, masterData]);
+  }, [formData.board, masterData, editMode]);
 
   useEffect(() => {
-      // Look up dynamic static fees from props
       if(formData.board && formData.program) {
           const fees = feeStructures.find((f:FeeStructure) => f.board === formData.board && f.program === formData.program);
           setStaticFee(fees || null);
-          if (fees && !editMode) {
+          
+          // SNAPSHOT LOGIC: Only auto-fill if we are creating a NEW record.
+          // This ensures that existing student fee data remains unchanged even if Master Data fees change later.
+          if (fees && !editMode && formData.admissionFee === 0 && formData.tuitionFee === 0) {
               setFormData(prev => ({
                   ...prev,
                   admissionFee: fees.admission,
@@ -144,14 +148,12 @@ export const StudentBiodata = ({ students, onAddStudent, onDeleteStudent, onUpda
         else if (formData.board === "PNC" || formData.board === "KMU") {
             const isBSOrDPT = formData.program.startsWith("BS") || formData.program === "DPT";
             if (isBSOrDPT) {
-                // 10% annual increase logic for BS/DPT
                 const y1 = tuit * 2;
                 const y2 = (tuit * 1.1) * 2;
                 const y3 = (tuit * 1.21) * 2;
                 const y4 = (tuit * 1.331) * 2;
                 calculatedTotal = y1 + y2 + y3 + y4 + misc + aff + adm;
             } else {
-                // 2 year diplomas
                 calculatedTotal = adm + (tuit * 4) + misc + aff;
             }
         } else {
@@ -165,7 +167,7 @@ export const StudentBiodata = ({ students, onAddStudent, onDeleteStudent, onUpda
             setFormData(prev => ({...prev, totalCourseFee: calculatedTotal}));
         }
      }
-  }, [formData.admissionFee, formData.tuitionFee, formData.miscCharges, formData.affiliationFee, formData.program, formData.board]);
+  }, [formData.admissionFee, formData.tuitionFee, formData.miscCharges, formData.affiliationFee, formData.program, formData.board, view]);
 
   const staticTotal = staticFee ? staticFee.total : 0;
   const totalConcession = staticTotal > 0 ? Math.max(0, staticTotal - formData.totalCourseFee) : 0;
@@ -187,19 +189,21 @@ export const StudentBiodata = ({ students, onAddStudent, onDeleteStudent, onUpda
       setFormData({...formData, address: val});
       setErrors({...errors, address: !val});
 
-      if(val.length > 2) {
+      if(val.length > 1) {
           const term = val.toLowerCase();
-          let correction = null;
+          
+          let autoCorrectSuggestion = "";
           Object.keys(COMMON_TYPOS).forEach(typo => {
               if (term.includes(typo)) {
-                  correction = val.toLowerCase().replace(typo, COMMON_TYPOS[typo]);
-                  correction = correction.replace(/\b\w/g, l => l.toUpperCase());
+                  let corrected = val.toLowerCase().replace(typo, COMMON_TYPOS[typo]);
+                  autoCorrectSuggestion = corrected.replace(/\b\w/g, l => l.toUpperCase());
               }
           });
 
           const suggestions = EXPANDED_LOCATIONS.filter(loc => {
               const lowerLoc = loc.toLowerCase();
               if(lowerLoc.includes(term)) return true;
+              
               let matchCount = 0;
               let lastIndex = -1;
               for(const char of term) {
@@ -209,10 +213,17 @@ export const StudentBiodata = ({ students, onAddStudent, onDeleteStudent, onUpda
                       lastIndex = idx;
                   }
               }
-              return (matchCount / Math.max(term.length, lowerLoc.length)) > 0.5; 
-          }).sort();
+              return (matchCount / Math.max(term.length, lowerLoc.length)) > 0.7; 
+          }).sort((a, b) => {
+              if(a.toLowerCase().startsWith(term)) return -1;
+              if(b.toLowerCase().startsWith(term)) return 1;
+              return 0;
+          });
 
-          const finalSuggestions = correction && !suggestions.includes(correction) ? [correction, ...suggestions] : suggestions;
+          const finalSuggestions = autoCorrectSuggestion && !suggestions.includes(autoCorrectSuggestion) 
+              ? [autoCorrectSuggestion, ...suggestions] 
+              : suggestions;
+              
           setAddressSuggestions(finalSuggestions.slice(0, 5));
           setShowSuggestions(true);
       } else {
@@ -497,11 +508,11 @@ export const StudentBiodata = ({ students, onAddStudent, onDeleteStudent, onUpda
                         </select>
                     </div>
                     <div style={{position: 'relative'}}>
-                        <label style={styles.label}>Address *</label>
-                        <input style={getInputStyle('address')} value={formData.address} onChange={e => handleAddressChange(e.target.value)} placeholder="Type address..." onFocus={() => { if(formData.address) handleAddressChange(formData.address) }} />
+                        <label style={styles.label}>Smart Address Autocomplete *</label>
+                        <input style={getInputStyle('address')} value={formData.address} onChange={e => handleAddressChange(e.target.value)} placeholder="Type locality/street..." onFocus={() => { if(formData.address) handleAddressChange(formData.address) }} />
                         {showSuggestions && addressSuggestions.length > 0 && (
                             <ul style={{position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 10, background: 'white', border: '1px solid #cbd5e1', borderRadius: '6px', listStyle: 'none', padding: 0, margin: 0, boxShadow: '0 4px 6px rgba(0,0,0,0.1)', maxHeight: '200px', overflowY: 'auto'}}>
-                                {addressSuggestions.map((addr, idx) => (<li key={addr} onClick={() => selectAddress(addr)} style={{padding: '8px 12px', borderBottom: '1px solid #f1f5f9', cursor: 'pointer', fontSize: '0.85rem', color: '#0f172a'}}>{addr}</li>))}
+                                {addressSuggestions.map((addr, idx) => (<li key={addr} onClick={() => selectAddress(addr)} style={{padding: '8px 12px', borderBottom: '1px solid #f1f5f9', cursor: 'pointer', fontSize: '0.85rem', color: '#0f172a', fontWeight: idx === 0 ? 700 : 400}}>{addr} {idx === 0 && <span style={{fontSize: '0.65rem', color: '#3b82f6', marginLeft: '5px'}}>(Auto-Correct)</span>}</li>))}
                             </ul>
                         )}
                     </div>
@@ -549,7 +560,19 @@ export const StudentBiodata = ({ students, onAddStudent, onDeleteStudent, onUpda
            <div style={{marginBottom: '20px'}}><label style={styles.label}>Remarks</label><textarea style={styles.input} value={formData.remarks} onChange={e => setFormData({...formData, remarks: e.target.value})} /></div>
 
            <div className="no-print" style={{display: 'flex', gap: '10px'}}>
-              {editMode ? (<><button style={styles.button("primary")} onClick={handleSave}>Update Student</button><button style={styles.button("secondary")} onClick={() => setShowPrintPreview(true)}>Print Biodata</button><button style={styles.button("danger")} onClick={handleDelete}>Delete</button></>) : (<button style={styles.button("primary")} onClick={handleSave}>Save Record</button>)}
+              {editMode ? (
+                 <>
+                    <button style={styles.button("primary")} onClick={handleSave}>Update Student</button>
+                    <button style={styles.button("secondary")} onClick={() => setShowPrintPreview(true)}>Print Biodata</button>
+                    <button style={{...styles.button("secondary"), background: '#f1f5f9', color: '#475569'}} onClick={() => setView("list")}>Cancel</button>
+                    <button style={styles.button("danger")} onClick={handleDelete}>Delete</button>
+                 </>
+              ) : (
+                 <>
+                    <button style={styles.button("primary")} onClick={handleSave}>Save Record</button>
+                    <button style={styles.button("secondary")} onClick={() => setView("list")}>Cancel</button>
+                 </>
+              )}
            </div>
         </div>
       )}

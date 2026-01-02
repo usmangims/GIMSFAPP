@@ -332,10 +332,9 @@ const App = () => {
         {subItems && isExpanded && (
           <div style={{ display: 'flex', flexDirection: 'column', marginTop: '2px' }}>
             {subItems.map((sub: any) => {
-              const isSubActive = activeTab === sub.id && 
-                (!sub.setter || 
-                 (sub.val === reportSubTab || sub.val === finSubTab || sub.val === hrSubTab));
-                 
+              const isSubActive = activeTab === sub.id && (!sub.val || 
+                (sub.val === reportSubTab || sub.val === finSubTab || sub.val === hrSubTab));
+              
               return (
                 <div 
                   key={sub.label + sub.val} 
@@ -360,6 +359,14 @@ const App = () => {
 
   return (
     <div style={styles.appContainer}>
+      <style>{`
+        @media print {
+          body * { visibility: hidden; }
+          #printable-area, #printable-area *, .print-header, .print-header *, .modal-printable, .modal-printable * { visibility: visible; }
+          #printable-area, .modal-printable { position: absolute; left: 0; top: 0; width: 100%; margin: 0; padding: 0; }
+          .no-print, .sidebar, .nav, .filter-bar, button { display: none !important; }
+        }
+      `}</style>
       {/* Sidebar */}
       <div className="no-print" style={styles.sidebar}>
         <div style={styles.brand}>
@@ -435,7 +442,7 @@ const App = () => {
             ]} />
           )}
 
-          {permissions[userRole].scanner && <NavItem id="scanner" label="Biometrics" icon="biometric_setup" />}
+          {permissions[userRole].scanner && <NavItem id="scanner" label="Biometrics" icon="fingerprint" />}
           {permissions[userRole].sms && <NavItem id="sms" label="SMS Module" icon="sms" />}
 
           <div style={{ marginTop: '20px', borderTop: '1px solid #1e293b', paddingTop: '10px' }}>

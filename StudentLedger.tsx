@@ -48,7 +48,7 @@ export const StudentLedger = ({ students, transactions, masterData }: { students
 
    const handleSelect = (s: Student) => {
       setSelectedStudent(s);
-      setSearchName(""); setSearchFather(""); setSearchAdm(""); setSearchReceipt("");
+      setSearchName(""); setSearchFather(""); setSearchAdm(""); 
       setSelectedIndex(-1);
    };
 
@@ -69,7 +69,7 @@ export const StudentLedger = ({ students, transactions, masterData }: { students
    };
 
    const handleExportPDF = () => {
-      const element = document.getElementById('ledger-printable-content');
+      const element = document.getElementById('printable-area');
       if (!element) return;
       const opt = {
          margin: 10,
@@ -103,11 +103,10 @@ export const StudentLedger = ({ students, transactions, masterData }: { students
          let dr = 0; let cr = 0;
          if (t.debitAccount === '1-01-004' || t.type === 'FEE_DUE') {
             dr = t.amount;
-            // Aggregating head-specific totals
             if (t.details) {
                ledgerData.regFee += (t.details.registration || 0);
                ledgerData.examFee += (t.details.exam || 0);
-               ledgerData.trainingFee += (t.details.hospital || 0); // Training Fee is Hospital Fee
+               ledgerData.trainingFee += (t.details.hospital || 0); 
             }
          }
          else if (t.creditAccount === '1-01-004' || t.type === 'FEE_RCV' || t.type === 'FEE') {
@@ -122,9 +121,17 @@ export const StudentLedger = ({ students, transactions, masterData }: { students
       ledgerData.balance = ledgerData.totalLiability - ledgerData.totalPaid;
    }
 
+   const headerStyle = {
+      ...styles.th,
+      backgroundColor: '#000000',
+      color: '#ffffff',
+      fontWeight: '800',
+      borderBottom: 'none'
+   };
+
    const PrintPreviewModal = () => (
       <div style={styles.modalOverlay}>
-         <div style={{...styles.modalContent, width: '210mm', padding: '0', backgroundColor: '#f1f5f9'}}>
+         <div style={{...styles.modalContent, width: '210mm', padding: '0', backgroundColor: '#f1f5f9'}} className="modal-printable">
             <div className="no-print" style={{padding: '20px', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'white'}}>
                <h3 style={{margin: 0}}>Ledger Print Preview</h3>
                <div style={{display: 'flex', gap: '10px'}}>
@@ -138,7 +145,7 @@ export const StudentLedger = ({ students, transactions, masterData }: { students
                </div>
             </div>
             
-            <div id="ledger-printable-content" style={{padding: '40px', backgroundColor: 'white', minHeight: '297mm'}}>
+            <div id="printable-area" style={{padding: '40px', backgroundColor: 'white', minHeight: '297mm'}}>
                <div style={{textAlign: 'center', borderBottom: '2px solid #0f172a', paddingBottom: '20px', marginBottom: '30px'}}>
                   <h1 style={{margin: '0 0 5px 0', textTransform: 'uppercase', fontSize: '1.8rem'}}>Ghazali Institute of Medical Sciences</h1>
                   <h3 style={{margin: 0, fontWeight: 600, color: '#475569'}}>Student Statement of Account</h3>
@@ -188,26 +195,29 @@ export const StudentLedger = ({ students, transactions, masterData }: { students
 
                <table style={{width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem'}}>
                   <thead>
-                     <tr style={{background: '#0f172a', color: 'white'}}>
-                        <th style={{padding: '12px', textAlign: 'left', border: '1px solid #334155'}}>Date</th>
-                        <th style={{padding: '12px', textAlign: 'left', border: '1px solid #334155'}}>Voucher/Ref</th>
-                        <th style={{padding: '12px', textAlign: 'left', border: '1px solid #334155'}}>Description</th>
-                        <th style={{padding: '12px', textAlign: 'right', border: '1px solid #334155'}}>Dr (Due)</th>
-                        <th style={{padding: '12px', textAlign: 'right', border: '1px solid #334155'}}>Cr (Paid)</th>
-                        <th style={{padding: '12px', textAlign: 'right', border: '1px solid #334155'}}>Balance</th>
+                     <tr style={{background: '#000000', color: 'white'}}>
+                        <th style={{padding: '12px', textAlign: 'left', border: '1px solid #334155', fontWeight: 'bold'}}>Date</th>
+                        <th style={{padding: '12px', textAlign: 'left', border: '1px solid #334155', fontWeight: 'bold'}}>Voucher/Ref</th>
+                        <th style={{padding: '12px', textAlign: 'left', border: '1px solid #334155', fontWeight: 'bold'}}>Description</th>
+                        <th style={{padding: '12px', textAlign: 'right', border: '1px solid #334155', fontWeight: 'bold'}}>Dr (Due)</th>
+                        <th style={{padding: '12px', textAlign: 'right', border: '1px solid #334155', fontWeight: 'bold'}}>Cr (Paid)</th>
+                        <th style={{padding: '12px', textAlign: 'right', border: '1px solid #334155', fontWeight: 'bold'}}>Balance</th>
                      </tr>
                   </thead>
                   <tbody>
-                     {ledgerData.rows.map((r: any, idx: number) => (
-                        <tr key={idx}>
-                           <td style={{padding: '10px', border: '1px solid #e2e8f0'}}>{r.date}</td>
-                           <td style={{padding: '10px', border: '1px solid #e2e8f0', fontFamily: 'monospace'}}>{r.voucherNo || r.id}</td>
-                           <td style={{padding: '10px', border: '1px solid #e2e8f0'}}>{r.description}</td>
-                           <td style={{padding: '10px', border: '1px solid #e2e8f0', textAlign: 'right'}}>{r.dr ? r.dr.toLocaleString() : '-'}</td>
-                           <td style={{padding: '10px', border: '1px solid #e2e8f0', textAlign: 'right'}}>{r.cr ? r.cr.toLocaleString() : '-'}</td>
-                           <td style={{padding: '10px', border: '1px solid #e2e8f0', textAlign: 'right', fontWeight: 700}}>{r.balance.toLocaleString()}</td>
-                        </tr>
-                     ))}
+                     {ledgerData.rows.map((r: any, idx: number) => {
+                        const isTraced = searchReceipt && (r.voucherNo === searchReceipt || r.id === searchReceipt);
+                        return (
+                           <tr key={idx} style={{backgroundColor: isTraced ? '#fef08a' : 'transparent'}}>
+                              <td style={{padding: '10px', border: '1px solid #e2e8f0'}}>{r.date}</td>
+                              <td style={{padding: '10px', border: '1px solid #e2e8f0', fontFamily: 'monospace', fontWeight: isTraced ? 800 : 400}}>{r.voucherNo || r.id}</td>
+                              <td style={{padding: '10px', border: '1px solid #e2e8f0'}}>{r.description}</td>
+                              <td style={{padding: '10px', border: '1px solid #e2e8f0', textAlign: 'right'}}>{r.dr ? r.dr.toLocaleString() : '-'}</td>
+                              <td style={{padding: '10px', border: '1px solid #e2e8f0', textAlign: 'right'}}>{r.cr ? r.cr.toLocaleString() : '-'}</td>
+                              <td style={{padding: '10px', border: '1px solid #e2e8f0', textAlign: 'right', fontWeight: 700}}>{r.balance.toLocaleString()}</td>
+                           </tr>
+                        );
+                     })}
                   </tbody>
                </table>
 
@@ -223,8 +233,8 @@ export const StudentLedger = ({ students, transactions, masterData }: { students
    return (
       <div>
          {showPrintPreview && <PrintPreviewModal />}
-         <h2 style={{marginBottom: '5px'}}>Student Ledger</h2>
-         <p style={{color: '#64748b', marginBottom: '24px'}}>Financial history and statement of account</p>
+         <h2 className="no-print" style={{marginBottom: '5px'}}>Student Ledger</h2>
+         <p className="no-print" style={{color: '#64748b', marginBottom: '24px'}}>Financial history and statement of account</p>
 
          <div className="no-print" style={{marginBottom: '20px', background: '#f8fafc', padding: '20px', borderRadius: '12px', border: '1px solid #e2e8f0'}}>
              <label style={{...styles.label, marginBottom: '10px', display: 'block'}}>Search Student</label>
@@ -232,7 +242,7 @@ export const StudentLedger = ({ students, transactions, masterData }: { students
                <div style={{flex: 1}}><input style={styles.input} placeholder="By Name" value={searchName} onChange={e => setSearchName(e.target.value)} onKeyDown={handleKeyDown} /></div>
                <div style={{flex: 1}}><input style={styles.input} placeholder="By Father Name" value={searchFather} onChange={e => setSearchFather(e.target.value)} onKeyDown={handleKeyDown} /></div>
                <div style={{flex: 1}}><input style={styles.input} placeholder="By Adm No" value={searchAdm} onChange={e => setSearchAdm(e.target.value)} onKeyDown={handleKeyDown} /></div>
-               <div style={{flex: 1}}><input style={{...styles.input, borderColor: '#3b82f6'}} placeholder="Trace by Receipt No" value={searchReceipt} onChange={e => setSearchReceipt(e.target.value)} /></div>
+               <div style={{flex: 1}}><input style={{...styles.input, borderColor: '#3b82f6', borderLeft: '4px solid #3b82f6'}} placeholder="Trace by Receipt No" value={searchReceipt} onChange={e => setSearchReceipt(e.target.value)} /></div>
              </div>
              {searchResults.length > 0 && !searchReceipt && (
                <div ref={listRef} style={{maxHeight: '200px', overflowY: 'auto', border: '1px solid #cbd5e1', background: 'white', borderRadius: '8px', marginTop: '10px', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)'}}>
@@ -247,7 +257,7 @@ export const StudentLedger = ({ students, transactions, masterData }: { students
          </div>
 
          {selectedStudent ? (
-            <div>
+            <div id="printable-area">
                <div className="no-print" style={{background: 'white', padding: '25px', borderRadius: '12px', border: '1px solid #e2e8f0', marginBottom: '25px', display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
                   <div style={{display: 'flex', gap: '20px', alignItems: 'center'}}>
                       <div style={{width: '70px', height: '70px', borderRadius: '50%', background: '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #cbd5e1', overflow: 'hidden'}}>
@@ -260,15 +270,16 @@ export const StudentLedger = ({ students, transactions, masterData }: { students
                   </div>
                   <div style={{display: 'flex', gap: '15px'}}>
                       <button style={{...styles.button("primary"), background: '#1e293b'}} onClick={() => setShowPrintPreview(true)}>
-                         <span className="material-symbols-outlined">print_preview</span> Print Preview
+                         <span className="material-symbols-outlined">visibility</span> Print Preview
                       </button>
-                      <button style={styles.button("secondary")} onClick={handleExportPDF}>
-                         <span className="material-symbols-outlined">download</span> Export PDF
+                      <button style={styles.button("secondary")} onClick={() => window.print()}>
+                         <span className="material-symbols-outlined">print</span> Print
                       </button>
                   </div>
                </div>
 
                <div style={styles.card}>
+                  {/* Ledger Summary Stats */}
                   <div style={{display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '15px', marginBottom: '25px'}}>
                      <div style={{padding: '15px', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0', textAlign: 'center'}}>
                         <div style={{fontSize: '0.7rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 700}}>Registration Fee</div>
@@ -297,20 +308,43 @@ export const StudentLedger = ({ students, transactions, masterData }: { students
                   </div>
 
                   <table style={styles.table}>
-                     <thead>
-                        <tr><th style={styles.th}>Date</th><th style={styles.th}>Ref</th><th style={styles.th}>Description</th><th style={{...styles.th, textAlign: 'right'}}>Dr</th><th style={{...styles.th, textAlign: 'right'}}>Cr</th><th style={{...styles.th, textAlign: 'right'}}>Balance</th></tr>
+                     <thead style={{position: 'sticky', top: 0, zIndex: 10}}>
+                        <tr>
+                           <th style={headerStyle}>Date</th>
+                           <th style={headerStyle}>Ref</th>
+                           <th style={headerStyle}>Description</th>
+                           <th style={{...headerStyle, textAlign: 'right'}}>Dr</th>
+                           <th style={{...headerStyle, textAlign: 'right'}}>Cr</th>
+                           <th style={{...headerStyle, textAlign: 'right'}}>Balance</th>
+                        </tr>
                      </thead>
                      <tbody>
-                        {ledgerData.rows.map((r:any) => (
-                           <tr key={r.id}>
-                              <td style={styles.td}>{r.date}</td>
-                              <td style={styles.td}><span style={{fontSize: '0.75rem', fontFamily: 'monospace'}}>{r.voucherNo || r.id}</span></td>
-                              <td style={styles.td}>{r.description}</td>
-                              <td style={{...styles.td, textAlign: 'right', color: '#b91c1c'}}>{r.dr ? r.dr.toLocaleString() : '-'}</td>
-                              <td style={{...styles.td, textAlign: 'right', color: '#15803d'}}>{r.cr ? r.cr.toLocaleString() : '-'}</td>
-                              <td style={{...styles.td, textAlign: 'right', fontWeight: 700}}>{r.balance.toLocaleString()}</td>
-                           </tr>
-                        ))}
+                        {ledgerData.rows.map((r:any) => {
+                           const isTraced = searchReceipt && (r.voucherNo === searchReceipt || r.id === searchReceipt);
+                           return (
+                              <tr key={r.id} style={{
+                                 backgroundColor: isTraced ? '#fef08a' : 'transparent',
+                                 border: isTraced ? '2px solid #f59e0b' : 'none',
+                                 boxShadow: isTraced ? 'inset 0 0 0 1px #f59e0b' : 'none'
+                              }}>
+                                 <td style={styles.td}>{r.date}</td>
+                                 <td style={styles.td}>
+                                    <span style={{
+                                       fontSize: '0.75rem', 
+                                       fontFamily: 'monospace', 
+                                       fontWeight: isTraced ? 900 : 400,
+                                       color: isTraced ? '#000' : 'inherit'
+                                    }}>
+                                       {r.voucherNo || r.id}
+                                    </span>
+                                 </td>
+                                 <td style={styles.td}>{r.description}</td>
+                                 <td style={{...styles.td, textAlign: 'right', color: '#b91c1c'}}>{r.dr ? r.dr.toLocaleString() : '-'}</td>
+                                 <td style={{...styles.td, textAlign: 'right', color: '#15803d'}}>{r.cr ? r.cr.toLocaleString() : '-'}</td>
+                                 <td style={{...styles.td, textAlign: 'right', fontWeight: 700}}>{r.balance.toLocaleString()}</td>
+                              </tr>
+                           );
+                        })}
                      </tbody>
                   </table>
                </div>

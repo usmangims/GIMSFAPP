@@ -101,7 +101,7 @@ export const Dashboard = ({ transactions, accounts, students, masterData, curren
             onClick={() => setActiveTab('scanner')}
             style={{...styles.button("primary"), background: '#0f172a', padding: '15px 30px', fontSize: '1rem', borderRadius: '12px', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.2)'}}
          >
-            <span className="material-symbols-outlined" style={{fontSize: '24px'}}>biometric_setup</span>
+            <span className="material-symbols-outlined" style={{fontSize: '24px'}}>fingerprint</span>
             Start Biometrics
          </button>
       </div>

@@ -33,7 +33,7 @@ export const MasterDataManager = ({ data, onUpdate, students, users, onUpdateUse
        departments: "apartment",
        inventoryCategories: "category",
        fees: "payments",
-       biometric: "biometric_setup"
+       biometric: "fingerprint"
    };
 
    // Generic Add

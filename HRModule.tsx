@@ -313,6 +313,11 @@ export const HRModule = ({ employees, onAddEmployee, onUpdateEmployee, onDeleteE
                    </div>
                    <div style={{flex: 1, overflowY: 'auto', padding: '40px', backgroundColor: '#525659'}}>
                        <div id="printable-area" style={{background: 'white', padding: '40px', minHeight: '1000px', boxShadow: '0 4px 10px rgba(0,0,0,0.2)', width: '100%', maxWidth: '210mm', margin: '0 auto', boxSizing: 'border-box'}}>
+                           {/* New: Generation Date at the very top */}
+                           <div style={{textAlign: 'right', fontSize: '0.8rem', color: '#64748b', marginBottom: '10px'}}>
+                               <strong>Date:</strong> {new Date().toLocaleDateString()}
+                           </div>
+                           
                            <div style={{textAlign: 'center', marginBottom: '30px', borderBottom: '2px solid #0f172a', paddingBottom: '15px'}}>
                                <div style={{display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '15px', marginBottom: '10px'}}>
                                    <span className="material-symbols-outlined" style={{fontSize: '40px', color: '#166534'}}>account_balance</span>
@@ -327,7 +332,12 @@ export const HRModule = ({ employees, onAddEmployee, onUpdateEmployee, onDeleteE
                                <div>
                                    <div style={{display: 'flex', justifyContent: 'space-between', marginBottom: '30px', background: '#f8fafc', padding: '15px', borderRadius: '8px', border: '1px solid #e2e8f0'}}>
                                        <div style={{lineHeight: '1.6'}}><div><strong>Name:</strong> {data.name}</div><div><strong>Designation:</strong> {data.designation}</div><div><strong>Department:</strong> {data.department}</div></div>
-                                       <div style={{textAlign: 'right', lineHeight: '1.6'}}><div><strong>Emp ID:</strong> {data.id}</div><div><strong>Date:</strong> {new Date().toLocaleDateString()}</div><div><strong>Campus:</strong> {data.campus}</div></div>
+                                       <div style={{textAlign: 'right', lineHeight: '1.6'}}>
+                                           <div><strong>Emp ID:</strong> {data.id}</div>
+                                           {/* Updated: Changed 'Date' to 'D.O.J' (Joining Date) */}
+                                           <div><strong>D.O.J:</strong> {data.joiningDate}</div>
+                                           <div><strong>Campus:</strong> {data.campus}</div>
+                                       </div>
                                    </div>
                                    <table style={{width: '100%', borderCollapse: 'collapse', marginBottom: '30px', border: '1px solid #cbd5e1'}}>
                                        <thead><tr style={{background: '#f1f5f9'}}><th style={{padding: '12px', border: '1px solid #cbd5e1', textAlign: 'left'}}>Earnings</th><th style={{padding: '12px', border: '1px solid #cbd5e1', textAlign: 'right', width: '120px'}}>Amount</th><th style={{padding: '12px', border: '1px solid #cbd5e1', textAlign: 'left'}}>Deductions</th><th style={{padding: '12px', border: '1px solid #cbd5e1', textAlign: 'right', width: '120px'}}>Amount</th></tr></thead>

@@ -16,6 +16,40 @@ export const FinancialStatements = ({ transactions, accounts, students, masterDa
 
   const postedTxns = transactions.filter((t: any) => t.status === "Posted");
 
+  // Professional Ledger Styles
+  const ledgerTableStyle = {
+    width: "100%",
+    borderCollapse: "collapse" as const,
+    fontSize: "0.95rem",
+    border: "1px solid #e2e8f0",
+    backgroundColor: "white",
+  };
+
+  const ledgerThStyle = {
+    backgroundColor: "#f1f5f9",
+    color: "#475569",
+    fontWeight: "700",
+    textTransform: "uppercase" as const,
+    fontSize: "0.75rem",
+    letterSpacing: "0.5px",
+    padding: "14px 16px",
+    border: "1px solid #e2e8f0",
+    textAlign: "left" as const,
+  };
+
+  const ledgerTdStyle = (isNumeric = false, isBold = false) => ({
+    padding: "12px 16px",
+    border: "1px solid #e2e8f0",
+    textAlign: isNumeric ? ("right" as const) : ("left" as const),
+    color: "#1e293b",
+    fontWeight: isBold ? "700" : "400",
+    fontFamily: isNumeric ? "'JetBrains Mono', monospace" : "inherit",
+  });
+
+  const zebraRowStyle = (index: number) => ({
+    backgroundColor: index % 2 === 0 ? "white" : "#f8fafc",
+  });
+
   const getBalance = (accCode: string, start: string, end: string, includeLiabilityCreation = true) => {
     return postedTxns
       .filter((t:any) => {
@@ -70,30 +104,30 @@ export const FinancialStatements = ({ transactions, accounts, students, masterDa
             <div style={{fontSize: '1.2rem', fontWeight: 600}}>Trial Balance</div>
             <div style={{color: '#64748b'}}>As at {toDate}</div>
          </div>
-         <table style={styles.table}>
+         <table style={ledgerTableStyle}>
             <thead>
                <tr>
-                  <th style={styles.th}>Code</th>
-                  <th style={styles.th}>Account Name</th>
-                  <th style={styles.th}>Category</th>
-                  <th style={{...styles.th, textAlign: 'right'}}>Debit (Rs)</th>
-                  <th style={{...styles.th, textAlign: 'right'}}>Credit (Rs)</th>
+                  <th style={ledgerThStyle}>Code</th>
+                  <th style={ledgerThStyle}>Account Name</th>
+                  <th style={ledgerThStyle}>Category</th>
+                  <th style={{...ledgerThStyle, textAlign: 'right'}}>Debit (Rs)</th>
+                  <th style={{...ledgerThStyle, textAlign: 'right'}}>Credit (Rs)</th>
                </tr>
             </thead>
             <tbody>
-               {trialRows.map((r:any) => (
-                 <tr key={r.code}>
-                   <td style={styles.td}>{r.code}</td>
-                   <td style={styles.td}>{r.name}</td>
-                   <td style={styles.td}><span style={styles.badge(r.category)}>{r.category}</span></td>
-                   <td style={{...styles.td, textAlign: 'right'}}>{r.debit ? r.debit.toLocaleString() : '-'}</td>
-                   <td style={{...styles.td, textAlign: 'right'}}>{r.credit ? r.credit.toLocaleString() : '-'}</td>
+               {trialRows.map((r:any, idx: number) => (
+                 <tr key={r.code} style={zebraRowStyle(idx)}>
+                   <td style={ledgerTdStyle()}>{r.code}</td>
+                   <td style={ledgerTdStyle(false, true)}>{r.name}</td>
+                   <td style={ledgerTdStyle()}><span style={styles.badge(r.category)}>{r.category}</span></td>
+                   <td style={ledgerTdStyle(true)}>{r.debit ? r.debit.toLocaleString() : '-'}</td>
+                   <td style={ledgerTdStyle(true)}>{r.credit ? r.credit.toLocaleString() : '-'}</td>
                  </tr>
                ))}
-               <tr style={{background: '#f8fafc', fontWeight: 700}}>
-                  <td colSpan={3} style={{...styles.td, textAlign: 'right'}}>TOTAL</td>
-                  <td style={{...styles.td, textAlign: 'right'}}>{totalDr.toLocaleString()}</td>
-                  <td style={{...styles.td, textAlign: 'right'}}>{totalCr.toLocaleString()}</td>
+               <tr style={{background: '#f1f5f9', fontWeight: 700}}>
+                  <td colSpan={3} style={ledgerTdStyle(true, true)}>TOTAL</td>
+                  <td style={ledgerTdStyle(true, true)}>{totalDr.toLocaleString()}</td>
+                  <td style={ledgerTdStyle(true, true)}>{totalCr.toLocaleString()}</td>
                </tr>
             </tbody>
          </table>
@@ -131,21 +165,38 @@ export const FinancialStatements = ({ transactions, accounts, students, masterDa
          <div style={styles.grid2}>
             <div>
                <h4 style={{color: '#166534', borderBottom: '2px solid #166534', paddingBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px'}}>Revenue</h4>
-               <table style={styles.table}>
-                  <tbody>{incomeRows.map((r:any) => (<tr key={r.code}><td style={{padding: '8px 0'}}>{r.name}</td><td style={{textAlign: 'right'}}>{r.amount.toLocaleString()}</td></tr>))}
-                  <tr style={{background: '#f0fdf4', fontWeight: 700}}><td style={{padding: '12px 0'}}>Total Revenue</td><td style={{textAlign: 'right'}}>{totalIncome.toLocaleString()}</td></tr></tbody>
+               <table style={ledgerTableStyle}>
+                  <thead>
+                    <tr><th style={ledgerThStyle}>Particulars</th><th style={{...ledgerThStyle, textAlign: 'right'}}>Amount (Rs)</th></tr>
+                  </thead>
+                  <tbody>{incomeRows.map((r:any, idx: number) => (
+                    <tr key={r.code} style={zebraRowStyle(idx)}>
+                        <td style={ledgerTdStyle()}>{r.name}</td>
+                        <td style={ledgerTdStyle(true)}>{r.amount.toLocaleString()}</td>
+                    </tr>))}
+                  <tr style={{background: '#f0fdf4', fontWeight: 700}}><td style={ledgerTdStyle(false, true)}>Total Revenue</td><td style={ledgerTdStyle(true, true)}>{totalIncome.toLocaleString()}</td></tr></tbody>
                </table>
             </div>
             <div>
                <h4 style={{color: '#b91c1c', borderBottom: '2px solid #b91c1c', paddingBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px'}}>Expenditure</h4>
-               <table style={styles.table}>
-                  <tbody>{expenseRows.map((r:any) => (<tr key={r.code}><td style={{padding: '8px 0'}}>{r.name}</td><td style={{textAlign: 'right'}}>{r.amount.toLocaleString()}</td></tr>))}
-                  <tr style={{background: '#fef2f2', fontWeight: 700}}><td style={{padding: '12px 0'}}>Total Expenditure</td><td style={{textAlign: 'right'}}>{totalExpense.toLocaleString()}</td></tr></tbody>
+               <table style={ledgerTableStyle}>
+                  <thead>
+                    <tr><th style={ledgerThStyle}>Particulars</th><th style={{...ledgerThStyle, textAlign: 'right'}}>Amount (Rs)</th></tr>
+                  </thead>
+                  <tbody>{expenseRows.map((r:any, idx: number) => (
+                    <tr key={r.code} style={zebraRowStyle(idx)}>
+                        <td style={ledgerTdStyle()}>{r.name}</td>
+                        <td style={ledgerTdStyle(true)}>{r.amount.toLocaleString()}</td>
+                    </tr>))}
+                  <tr style={{background: '#fef2f2', fontWeight: 700}}><td style={ledgerTdStyle(false, true)}>Total Expenditure</td><td style={ledgerTdStyle(true, true)}>{totalExpense.toLocaleString()}</td></tr></tbody>
                </table>
             </div>
          </div>
-         <div style={{marginTop: '30px', padding: '20px', borderRadius: '8px', backgroundColor: netProfit >= 0 ? '#ecfdf5' : '#fef2f2', border: '1px solid #cbd5e1'}}>
-            <h3 style={{margin: 0, display: 'flex', justifyContent: 'space-between'}}><span>Net Surplus/Deficit</span><span>Rs {Math.abs(netProfit).toLocaleString()}</span></h3>
+         <div style={{marginTop: '30px', padding: '24px', borderRadius: '12px', backgroundColor: netProfit >= 0 ? '#ecfdf5' : '#fef2f2', border: `2px solid ${netProfit >= 0 ? '#166534' : '#b91c1c'}`}}>
+            <h3 style={{margin: 0, display: 'flex', justifyContent: 'space-between', color: netProfit >= 0 ? '#065f46' : '#991b1b'}}>
+                <span style={{textTransform: 'uppercase', letterSpacing: '1px'}}>Net Surplus/Deficit</span>
+                <span style={{fontWeight: 900}}>Rs {Math.abs(netProfit).toLocaleString()}</span>
+            </h3>
          </div>
       </div>
     );
@@ -180,8 +231,39 @@ export const FinancialStatements = ({ transactions, accounts, students, masterDa
             <div style={{color: '#64748b'}}>As at {toDate}</div>
          </div>
          <div style={styles.grid2}>
-             <div><h3 style={{borderBottom: '2px solid #1d4ed8'}}>Assets</h3><table style={styles.table}><tbody>{assetRows.map((r: any, i: number) => (<tr key={i}><td style={{padding: '8px 0'}}>{r.name}</td><td style={{textAlign: 'right'}}>{r.amount.toLocaleString()}</td></tr>))}<tr style={{background: '#eff6ff', fontWeight: 700}}><td style={{padding: '12px 0'}}>Total Assets</td><td style={{textAlign: 'right'}}>{totalAssets.toLocaleString()}</td></tr></tbody></table></div>
-             <div><h3 style={{borderBottom: '2px solid #9333ea'}}>Liabilities & Equity</h3><table style={styles.table}><tbody>{liabilityRows.map((r: any, i: number) => (<tr key={i}><td style={{padding: '8px 0'}}>{r.name}</td><td style={{textAlign: 'right'}}>{r.amount.toLocaleString()}</td></tr>))}<tr style={{borderBottom: '1px solid #eee'}}><td style={{padding: '8px 0'}}>Retained Earnings (Current)</td><td style={{textAlign: 'right'}}>{currentProfit.toLocaleString()}</td></tr><tr style={{background: '#fdf4ff', fontWeight: 700}}><td style={{padding: '12px 0'}}>Total Liab & Equity</td><td style={{textAlign: 'right'}}>{(totalLiabilities + currentProfit).toLocaleString()}</td></tr></tbody></table></div>
+             <div>
+                <h3 style={{borderBottom: '2px solid #1d4ed8', paddingBottom: '10px', color: '#1d4ed8'}}>Assets</h3>
+                <table style={ledgerTableStyle}>
+                    <thead><tr><th style={ledgerThStyle}>Particulars</th><th style={{...ledgerThStyle, textAlign: 'right'}}>Amount (Rs)</th></tr></thead>
+                    <tbody>{assetRows.map((r: any, i: number) => (
+                        <tr key={i} style={zebraRowStyle(i)}>
+                            <td style={ledgerTdStyle()}>{r.name}</td>
+                            <td style={ledgerTdStyle(true)}>{r.amount.toLocaleString()}</td>
+                        </tr>))}<tr style={{background: '#eff6ff', fontWeight: 700}}>
+                            <td style={ledgerTdStyle(false, true)}>Total Assets</td>
+                            <td style={ledgerTdStyle(true, true)}>{totalAssets.toLocaleString()}</td>
+                        </tr>
+                    </tbody>
+                </table>
+             </div>
+             <div>
+                <h3 style={{borderBottom: '2px solid #9333ea', paddingBottom: '10px', color: '#9333ea'}}>Liabilities & Equity</h3>
+                <table style={ledgerTableStyle}>
+                    <thead><tr><th style={ledgerThStyle}>Particulars</th><th style={{...ledgerThStyle, textAlign: 'right'}}>Amount (Rs)</th></tr></thead>
+                    <tbody>{liabilityRows.map((r: any, i: number) => (
+                        <tr key={i} style={zebraRowStyle(i)}>
+                            <td style={ledgerTdStyle()}>{r.name}</td>
+                            <td style={ledgerTdStyle(true)}>{r.amount.toLocaleString()}</td>
+                        </tr>))}<tr style={{borderBottom: '1px solid #eee'}}>
+                            <td style={ledgerTdStyle()}>Retained Earnings (Current)</td>
+                            <td style={ledgerTdStyle(true)}>{currentProfit.toLocaleString()}</td>
+                        </tr><tr style={{background: '#fdf4ff', fontWeight: 700}}>
+                            <td style={ledgerTdStyle(false, true)}>Total Liab & Equity</td>
+                            <td style={ledgerTdStyle(true, true)}>{(totalLiabilities + currentProfit).toLocaleString()}</td>
+                        </tr>
+                    </tbody>
+                </table>
+             </div>
          </div>
       </div>
     );
@@ -208,10 +290,31 @@ export const FinancialStatements = ({ transactions, accounts, students, masterDa
         </div>
         {selectedGlAccount && (
           <div id="printable-area">
-             <div style={{textAlign: 'center', marginBottom: '20px'}}><h2 style={{textTransform: 'uppercase'}}>General Ledger</h2><h4>{accounts.find(a => a.code === selectedGlAccount)?.name}</h4></div>
-             <table style={styles.table}>
-                <thead><tr><th style={styles.th}>Date</th><th style={styles.th}>Voucher</th><th style={styles.th}>Description</th><th style={{...styles.th, textAlign: 'right'}}>Debit</th><th style={{...styles.th, textAlign: 'right'}}>Credit</th><th style={{...styles.th, textAlign: 'right'}}>Balance</th></tr></thead>
-                <tbody>{glTransactions.map(t => (<tr key={t.id}><td>{t.date}</td><td>{t.voucherNo}</td><td>{t.description}</td><td style={{textAlign: 'right'}}>{t.dr ? t.dr.toLocaleString() : '-'}</td><td style={{textAlign: 'right'}}>{t.cr ? t.cr.toLocaleString() : '-'}</td><td style={{textAlign: 'right', fontWeight: 600}}>{t.runningBal.toLocaleString()}</td></tr>))}</tbody>
+             <div style={{textAlign: 'center', marginBottom: '20px'}}><h2 style={{textTransform: 'uppercase'}}>General Ledger</h2><h4 style={{color: '#475569'}}>{accounts.find(a => a.code === selectedGlAccount)?.name} ({selectedGlAccount})</h4></div>
+             <table style={ledgerTableStyle}>
+                <thead>
+                    <tr>
+                        <th style={ledgerThStyle}>Date</th>
+                        <th style={ledgerThStyle}>Voucher</th>
+                        <th style={ledgerThStyle}>Description</th>
+                        <th style={{...ledgerThStyle, textAlign: 'right'}}>Debit</th>
+                        <th style={{...ledgerThStyle, textAlign: 'right'}}>Credit</th>
+                        <th style={{...ledgerThStyle, textAlign: 'right'}}>Balance</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {glTransactions.map((t: any, idx: number) => (
+                        <tr key={t.id} style={zebraRowStyle(idx)}>
+                            <td style={ledgerTdStyle()}>{t.date}</td>
+                            <td style={ledgerTdStyle()}><span style={{fontFamily: 'monospace', fontWeight: 600}}>{t.voucherNo}</span></td>
+                            <td style={ledgerTdStyle()}>{t.description}</td>
+                            <td style={ledgerTdStyle(true)}>{t.dr ? t.dr.toLocaleString() : '-'}</td>
+                            <td style={ledgerTdStyle(true)}>{t.cr ? t.cr.toLocaleString() : '-'}</td>
+                            <td style={ledgerTdStyle(true, true)}>{t.runningBal.toLocaleString()}</td>
+                        </tr>
+                    ))}
+                    {glTransactions.length === 0 && <tr><td colSpan={6} style={{...ledgerTdStyle(), textAlign: 'center', padding: '40px', color: '#94a3b8'}}>No transaction history for this account.</td></tr>}
+                </tbody>
              </table>
           </div>
         )}
@@ -219,7 +322,7 @@ export const FinancialStatements = ({ transactions, accounts, students, masterDa
     );
   }
 
-  // --- 5. Profit and Loss (NEW TAB) ---
+  // --- 5. Profit and Loss ---
   if (reportType === "PL") {
     const feeIncomeAccs = accounts.filter((a:any) => a.category === "Income" && a.level === 3 && a.name.toLowerCase().includes("fee"));
     const otherIncomeAccs = accounts.filter((a:any) => a.category === "Income" && a.level === 3 && !a.name.toLowerCase().includes("fee"));
@@ -252,47 +355,45 @@ export const FinancialStatements = ({ transactions, accounts, students, masterDa
             </div>
 
             <div style={styles.grid2}>
-                {/* INCOME SIDE */}
-                <div style={{...styles.card, padding: '20px', borderTop: '4px solid #166534'}}>
-                    <h4 style={{marginTop: 0, color: '#166534', borderBottom: '2px solid #dcfce7', paddingBottom: '10px', display: 'flex', alignItems: 'center', gap: '8px'}}>
+                <div style={{...styles.card, padding: '0', border: '1px solid #e2e8f0', overflow: 'hidden'}}>
+                    <h4 style={{padding: '16px', margin: 0, background: '#f0fdf4', color: '#166534', borderBottom: '2px solid #dcfce7', display: 'flex', alignItems: 'center', gap: '8px'}}>
                         <span className="material-symbols-outlined">trending_up</span> Income Details
                     </h4>
-                    <table style={styles.table}>
-                        <thead><tr><th style={styles.th}>Particulars</th><th style={{...styles.th, textAlign: 'right'}}>Amount (Rs)</th></tr></thead>
+                    <table style={ledgerTableStyle}>
+                        <thead><tr><th style={ledgerThStyle}>Particulars</th><th style={{...ledgerThStyle, textAlign: 'right'}}>Amount (Rs)</th></tr></thead>
                         <tbody>
-                            {feeIncomeRows.length > 0 && <tr style={{background: '#f8fafc'}}><td colSpan={2} style={{...styles.td, fontWeight: 700, fontSize: '0.75rem', color: '#64748b'}}>STUDENT FEES</td></tr>}
-                            {feeIncomeRows.map((r, i) => <tr key={i}><td style={styles.td}>{r.name}</td><td style={{...styles.td, textAlign: 'right'}}>{r.amount.toLocaleString()}</td></tr>)}
-                            {otherIncomeRows.length > 0 && <tr style={{background: '#f8fafc'}}><td colSpan={2} style={{...styles.td, fontWeight: 700, fontSize: '0.75rem', color: '#64748b'}}>OTHER REVENUE</td></tr>}
-                            {otherIncomeRows.map((r, i) => <tr key={i}><td style={styles.td}>{r.name}</td><td style={{...styles.td, textAlign: 'right'}}>{r.amount.toLocaleString()}</td></tr>)}
+                            {feeIncomeRows.length > 0 && <tr style={{background: '#f8fafc'}}><td colSpan={2} style={{...ledgerTdStyle(), fontWeight: 800, fontSize: '0.7rem', color: '#64748b', backgroundColor: '#f1f5f9'}}>STUDENT FEES</td></tr>}
+                            {feeIncomeRows.map((r, i) => <tr key={i} style={zebraRowStyle(i)}><td style={ledgerTdStyle()}>{r.name}</td><td style={ledgerTdStyle(true)}>{r.amount.toLocaleString()}</td></tr>)}
+                            {otherIncomeRows.length > 0 && <tr style={{background: '#f8fafc'}}><td colSpan={2} style={{...ledgerTdStyle(), fontWeight: 800, fontSize: '0.7rem', color: '#64748b', backgroundColor: '#f1f5f9'}}>OTHER REVENUE</td></tr>}
+                            {otherIncomeRows.map((r, i) => <tr key={i} style={zebraRowStyle(i)}><td style={ledgerTdStyle()}>{r.name}</td><td style={ledgerTdStyle(true)}>{r.amount.toLocaleString()}</td></tr>)}
                         </tbody>
                         <tfoot>
-                            <tr style={{background: '#f0fdf4', fontWeight: 800}}>
-                                <td style={styles.td}>TOTAL INCOME</td>
-                                <td style={{...styles.td, textAlign: 'right'}}>Rs {totalIncome.toLocaleString()}</td>
+                            <tr style={{background: '#dcfce7', fontWeight: 800}}>
+                                <td style={ledgerTdStyle(false, true)}>TOTAL INCOME</td>
+                                <td style={ledgerTdStyle(true, true)}>Rs {totalIncome.toLocaleString()}</td>
                             </tr>
                         </tfoot>
                     </table>
                 </div>
 
-                {/* EXPENSE SIDE */}
-                <div style={{...styles.card, padding: '20px', borderTop: '4px solid #b91c1c'}}>
-                    <h4 style={{marginTop: 0, color: '#b91c1c', borderBottom: '2px solid #fee2e2', paddingBottom: '10px', display: 'flex', alignItems: 'center', gap: '8px'}}>
+                <div style={{...styles.card, padding: '0', border: '1px solid #e2e8f0', overflow: 'hidden'}}>
+                    <h4 style={{padding: '16px', margin: 0, background: '#fef2f2', color: '#b91c1c', borderBottom: '2px solid #fee2e2', display: 'flex', alignItems: 'center', gap: '8px'}}>
                         <span className="material-symbols-outlined">trending_down</span> Operating Expenses
                     </h4>
-                    <table style={styles.table}>
-                        <thead><tr><th style={styles.th}>Particulars</th><th style={{...styles.th, textAlign: 'right'}}>Amount (Rs)</th></tr></thead>
+                    <table style={ledgerTableStyle}>
+                        <thead><tr><th style={ledgerThStyle}>Particulars</th><th style={{...ledgerThStyle, textAlign: 'right'}}>Amount (Rs)</th></tr></thead>
                         <tbody>
-                            {salaryRows.length > 0 && <tr style={{background: '#f8fafc'}}><td colSpan={2} style={{...styles.td, fontWeight: 700, fontSize: '0.75rem', color: '#64748b'}}>PAYROLL & SALARIES</td></tr>}
-                            {salaryRows.map((r, i) => <tr key={i}><td style={styles.td}>{r.name}</td><td style={{...styles.td, textAlign: 'right'}}>{r.amount.toLocaleString()}</td></tr>)}
-                            {utilityRows.length > 0 && <tr style={{background: '#f8fafc'}}><td colSpan={2} style={{...styles.td, fontWeight: 700, fontSize: '0.75rem', color: '#64748b'}}>UTILITY BILLS</td></tr>}
-                            {utilityRows.map((r, i) => <tr key={i}><td style={styles.td}>{r.name}</td><td style={{...styles.td, textAlign: 'right'}}>{r.amount.toLocaleString()}</td></tr>)}
-                            {otherExpenseRows.length > 0 && <tr style={{background: '#f8fafc'}}><td colSpan={2} style={{...styles.td, fontWeight: 700, fontSize: '0.75rem', color: '#64748b'}}>OTHER EXPENDITURE</td></tr>}
-                            {otherExpenseRows.map((r, i) => <tr key={i}><td style={styles.td}>{r.name}</td><td style={{...styles.td, textAlign: 'right'}}>{r.amount.toLocaleString()}</td></tr>)}
+                            {salaryRows.length > 0 && <tr style={{background: '#f8fafc'}}><td colSpan={2} style={{...ledgerTdStyle(), fontWeight: 800, fontSize: '0.7rem', color: '#64748b', backgroundColor: '#f1f5f9'}}>PAYROLL & SALARIES</td></tr>}
+                            {salaryRows.map((r, i) => <tr key={i} style={zebraRowStyle(i)}><td style={ledgerTdStyle()}>{r.name}</td><td style={ledgerTdStyle(true)}>{r.amount.toLocaleString()}</td></tr>)}
+                            {utilityRows.length > 0 && <tr style={{background: '#f8fafc'}}><td colSpan={2} style={{...ledgerTdStyle(), fontWeight: 800, fontSize: '0.7rem', color: '#64748b', backgroundColor: '#f1f5f9'}}>UTILITY BILLS</td></tr>}
+                            {utilityRows.map((r, i) => <tr key={i} style={zebraRowStyle(i)}><td style={ledgerTdStyle()}>{r.name}</td><td style={ledgerTdStyle(true)}>{r.amount.toLocaleString()}</td></tr>)}
+                            {otherExpenseRows.length > 0 && <tr style={{background: '#f8fafc'}}><td colSpan={2} style={{...ledgerTdStyle(), fontWeight: 800, fontSize: '0.7rem', color: '#64748b', backgroundColor: '#f1f5f9'}}>OTHER EXPENDITURE</td></tr>}
+                            {otherExpenseRows.map((r, i) => <tr key={i} style={zebraRowStyle(i)}><td style={ledgerTdStyle()}>{r.name}</td><td style={ledgerTdStyle(true)}>{r.amount.toLocaleString()}</td></tr>)}
                         </tbody>
                         <tfoot>
-                            <tr style={{background: '#fef2f2', fontWeight: 800}}>
-                                <td style={styles.td}>TOTAL EXPENSE</td>
-                                <td style={{...styles.td, textAlign: 'right'}}>Rs {totalExpense.toLocaleString()}</td>
+                            <tr style={{background: '#fee2e2', fontWeight: 800}}>
+                                <td style={ledgerTdStyle(false, true)}>TOTAL EXPENSE</td>
+                                <td style={ledgerTdStyle(true, true)}>Rs {totalExpense.toLocaleString()}</td>
                             </tr>
                         </tfoot>
                     </table>
@@ -308,13 +409,8 @@ export const FinancialStatements = ({ transactions, accounts, students, masterDa
                 </div>
                 <div style={{textAlign: 'right'}}>
                     <div style={{fontSize: '0.9rem', color: '#64748b', marginBottom: '5px'}}>Operating Margin</div>
-                    <div style={{fontSize: '1.5rem', fontWeight: 700}}>{totalIncome > 0 ? ((netResult/totalIncome)*100).toFixed(2) : 0}%</div>
+                    <div style={{fontSize: '1.5rem', fontWeight: 700, color: netResult >= 0 ? '#166534' : '#b91c1c'}}>{totalIncome > 0 ? ((netResult/totalIncome)*100).toFixed(2) : 0}%</div>
                 </div>
-            </div>
-
-            <div style={{marginTop: '40px', display: 'flex', justifyContent: 'space-between'}} className="print-only">
-                <div style={{textAlign: 'center', borderTop: '1px solid #000', width: '200px', paddingTop: '10px'}}>Prepared By</div>
-                <div style={{textAlign: 'center', borderTop: '1px solid #000', width: '200px', paddingTop: '10px'}}>Director Finance</div>
             </div>
         </div>
     );
@@ -335,39 +431,34 @@ export const FinancialStatements = ({ transactions, accounts, students, masterDa
 
     content = (
       <div id="printable-area">
-        <div style={{textAlign: 'center', marginBottom: '30px'}}><h2 style={{textTransform: 'uppercase'}}>{isProg ? "Program" : "Board"} Name Summary</h2></div>
-        <table style={styles.table}>
-          <thead><tr><th style={styles.th}>{isProg ? "Program" : "Board"} Name</th><th style={styles.th}>Students</th><th style={{...styles.th, textAlign: 'right'}}>Collected</th><th style={{...styles.th, textAlign: 'right'}}>Receivable</th><th style={{...styles.th, textAlign: 'right'}}>Total Revenue</th></tr></thead>
-          <tbody>{stats.map((s: any) => (<tr key={s.name}><td>{s.name}</td><td>{s.count}</td><td style={{textAlign: 'right', color: '#166534'}}>{s.collected.toLocaleString()}</td><td style={{textAlign: 'right', color: '#b91c1c'}}>{s.receivable.toLocaleString()}</td><td style={{textAlign: 'right', fontWeight: 600}}>{(s.collected + s.receivable).toLocaleString()}</td></tr>))}</tbody>
+        <div style={{textAlign: 'center', marginBottom: '30px'}}><h2 style={{textTransform: 'uppercase'}}>{isProg ? "Program" : "Board"} Summary Report</h2></div>
+        <table style={ledgerTableStyle}>
+          <thead>
+            <tr>
+                <th style={ledgerThStyle}>{isProg ? "Program" : "Board"} Name</th>
+                <th style={ledgerThStyle}>Students</th>
+                <th style={{...ledgerThStyle, textAlign: 'right'}}>Collected</th>
+                <th style={{...ledgerThStyle, textAlign: 'right'}}>Receivable</th>
+                <th style={{...ledgerThStyle, textAlign: 'right'}}>Total Revenue</th>
+            </tr>
+          </thead>
+          <tbody>
+            {stats.map((s: any, idx: number) => (
+                <tr key={s.name} style={zebraRowStyle(idx)}>
+                    <td style={ledgerTdStyle(false, true)}>{s.name}</td>
+                    <td style={ledgerTdStyle()}>{s.count}</td>
+                    <td style={ledgerTdStyle(true)}>{s.collected.toLocaleString()}</td>
+                    <td style={ledgerTdStyle(true)}>{s.receivable.toLocaleString()}</td>
+                    <td style={ledgerTdStyle(true, true)}>{(s.collected + s.receivable).toLocaleString()}</td>
+                </tr>
+            ))}
+          </tbody>
         </table>
       </div>
     );
   }
 
-  // --- 7. Inc/Exp Summary ---
-  if (reportType === "IE_SUM") {
-    const categories = ["Asset", "Liability", "Equity", "Income", "Expense"];
-    const catStats = categories.map(cat => {
-      const accs = accounts.filter((a: Account) => a.category === cat && a.level === 3);
-      const total = accs.reduce((sum: number, a: Account) => sum + Math.abs(getBalance(a.code, fromDate, toDate, true)), 0);
-      return { name: cat, amount: total };
-    });
-    content = (
-      <div id="printable-area">
-        <div style={{textAlign: 'center', marginBottom: '30px'}}><h2 style={{textTransform: 'uppercase'}}>Income & Expense Summary</h2></div>
-        <div style={{display: 'flex', flexDirection: 'column', gap: '15px'}}>
-          {catStats.map(c => (
-            <div key={c.name} style={{padding: '20px', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
-               <div><div style={{fontSize: '0.8rem', color: '#64748b', textTransform: 'uppercase'}}>{c.name}</div><div style={{fontSize: '1.5rem', fontWeight: 700}}>{c.amount.toLocaleString()}</div></div>
-               <div style={{width: '200px', height: '10px', background: '#e2e8f0', borderRadius: '5px', overflow: 'hidden'}}><div style={{width: '60%', height: '100%', background: '#4f46e5'}}></div></div>
-            </div>
-          ))}
-        </div>
-      </div>
-    );
-  }
-
-  // --- 8. Projected Revenue (BGT) ---
+  // --- 7. Projected Revenue (BGT) ---
   if (reportType === "BGT") {
     const totalPotential = students.reduce((sum: number, s: Student) => sum + s.totalCourseFee, 0);
     const totalCollected = postedTxns.filter((t: Transaction) => t.type === 'FEE' || t.type === 'FEE_RCV').reduce((sum: number, t: Transaction) => sum + t.amount, 0);
@@ -393,30 +484,30 @@ export const FinancialStatements = ({ transactions, accounts, students, masterDa
       <div id="printable-area">
         <div style={{textAlign: 'center', marginBottom: '30px'}}><h1 style={{textTransform: 'uppercase', fontSize: '1.8rem', color: '#0f172a'}}>Projected Revenue Dashboard</h1></div>
         <div style={{...styles.grid3, marginBottom: '40px'}}>
-           <div style={{...styles.card, background: '#f0fdf4', textAlign: 'center', marginBottom: 0}}><h5>Collected</h5><div style={{fontSize: '1.5rem', fontWeight: 700, color: '#166534'}}>Rs {totalCollected.toLocaleString()}</div></div>
-           <div style={{...styles.card, background: '#fef2f2', textAlign: 'center', marginBottom: 0}}><h5>Receivables</h5><div style={{fontSize: '1.5rem', fontWeight: 700, color: '#b91c1c'}}>Rs {totalDues.toLocaleString()}</div></div>
-           <div style={{...styles.card, background: '#eff6ff', textAlign: 'center', marginBottom: 0}}><h5>Total Projected</h5><div style={{fontSize: '1.5rem', fontWeight: 700, color: '#1e40af'}}>Rs {totalPotential.toLocaleString()}</div></div>
+           <div style={{...styles.card, background: '#f0fdf4', textAlign: 'center', marginBottom: 0, border: '1px solid #bbf7d0'}}><h5>Collected</h5><div style={{fontSize: '1.5rem', fontWeight: 900, color: '#166534'}}>Rs {totalCollected.toLocaleString()}</div></div>
+           <div style={{...styles.card, background: '#fef2f2', textAlign: 'center', marginBottom: 0, border: '1px solid #fecaca'}}><h5>Receivables</h5><div style={{fontSize: '1.5rem', fontWeight: 900, color: '#b91c1c'}}>Rs {totalDues.toLocaleString()}</div></div>
+           <div style={{...styles.card, background: '#eff6ff', textAlign: 'center', marginBottom: 0, border: '1px solid #bfdbfe'}}><h5>Total Projected</h5><div style={{fontSize: '1.5rem', fontWeight: 900, color: '#1e40af'}}>Rs {totalPotential.toLocaleString()}</div></div>
         </div>
 
         <div style={{display: 'flex', flexDirection: 'column', gap: '40px'}}>
             <div>
-                <h3 style={{borderLeft: '4px solid #4f46e5', paddingLeft: '10px', color: '#0f172a', marginBottom: '15px'}}>Monthly Wise Fee Breakdown</h3>
-                <table style={styles.table}>
+                <h3 style={{borderLeft: '4px solid #4f46e5', paddingLeft: '10px', color: '#0f172a', marginBottom: '15px'}}>Monthly Fee Projections</h3>
+                <table style={ledgerTableStyle}>
                     <thead>
-                        <tr style={{background: '#f8fafc'}}>
-                            <th style={styles.th}>S.No</th>
-                            <th style={styles.th}>Programs</th>
-                            <th style={styles.th}>Semester</th>
-                            <th style={{...styles.th, textAlign: 'right'}}>Monthly Fee</th>
+                        <tr>
+                            <th style={ledgerThStyle}>S.No</th>
+                            <th style={ledgerThStyle}>Programs</th>
+                            <th style={ledgerThStyle}>Semester</th>
+                            <th style={{...ledgerThStyle, textAlign: 'right'}}>Monthly Fee</th>
                         </tr>
                     </thead>
                     <tbody>
                         {uniqueClasses.map((c, i) => (
-                            <tr key={i}>
-                                <td style={styles.td}>{i + 1}</td>
-                                <td style={{...styles.td, fontWeight: 600}}>{c.program}</td>
-                                <td style={styles.td}>{c.semester}</td>
-                                <td style={{...styles.td, textAlign: 'right', fontWeight: 700, color: '#4f46e5'}}>Rs {c.monthly.toLocaleString()}</td>
+                            <tr key={i} style={zebraRowStyle(i)}>
+                                <td style={ledgerTdStyle()}>{i + 1}</td>
+                                <td style={ledgerTdStyle(false, true)}>{c.program}</td>
+                                <td style={ledgerTdStyle()}>{c.semester}</td>
+                                <td style={ledgerTdStyle(true, true)}>Rs {c.monthly.toLocaleString()}</td>
                             </tr>
                         ))}
                     </tbody>
@@ -424,60 +515,34 @@ export const FinancialStatements = ({ transactions, accounts, students, masterDa
             </div>
 
             <div>
-                <h3 style={{borderLeft: '4px solid #10b981', paddingLeft: '10px', color: '#0f172a', marginBottom: '15px'}}>Semester Wise Fee Breakdown</h3>
-                <table style={styles.table}>
+                <h3 style={{borderLeft: '4px solid #10b981', paddingLeft: '10px', color: '#0f172a', marginBottom: '15px'}}>Semester Fee Projections</h3>
+                <table style={ledgerTableStyle}>
                     <thead>
-                        <tr style={{background: '#f8fafc'}}>
-                            <th style={styles.th}>S.No</th>
-                            <th style={styles.th}>Programs</th>
-                            <th style={styles.th}>Semester</th>
-                            <th style={{...styles.th, textAlign: 'right'}}>Semester Fee</th>
+                        <tr>
+                            <th style={ledgerThStyle}>S.No</th>
+                            <th style={ledgerThStyle}>Programs</th>
+                            <th style={ledgerThStyle}>Semester</th>
+                            <th style={{...ledgerThStyle, textAlign: 'right'}}>Semester Fee</th>
                         </tr>
                     </thead>
                     <tbody>
                         {uniqueClasses.map((c, i) => (
-                            <tr key={i}>
-                                <td style={styles.td}>{i + 1}</td>
-                                <td style={{...styles.td, fontWeight: 600}}>{c.program}</td>
-                                <td style={styles.td}>{c.semester}</td>
-                                <td style={{...styles.td, textAlign: 'right', fontWeight: 700, color: '#10b981'}}>Rs {c.semesterFee.toLocaleString()}</td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
-            </div>
-
-            <div>
-                <h3 style={{borderLeft: '4px solid #f97316', paddingLeft: '10px', color: '#0f172a', marginBottom: '15px'}}>Yearly Wise Fee Breakdown</h3>
-                <table style={styles.table}>
-                    <thead>
-                        <tr style={{background: '#f8fafc'}}>
-                            <th style={styles.th}>S.No</th>
-                            <th style={styles.th}>Programs</th>
-                            <th style={styles.th}>Semester</th>
-                            <th style={{...styles.th, textAlign: 'right'}}>Yearly Fee</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {uniqueClasses.map((c, i) => (
-                            <tr key={i}>
-                                <td style={styles.td}>{i + 1}</td>
-                                <td style={{...styles.td, fontWeight: 600}}>{c.program}</td>
-                                <td style={styles.td}>{c.semester}</td>
-                                <td style={{...styles.td, textAlign: 'right', fontWeight: 700, color: '#f97316'}}>Rs {c.yearly.toLocaleString()}</td>
+                            <tr key={i} style={zebraRowStyle(i)}>
+                                <td style={ledgerTdStyle()}>{i + 1}</td>
+                                <td style={ledgerTdStyle(false, true)}>{c.program}</td>
+                                <td style={ledgerTdStyle()}>{c.semester}</td>
+                                <td style={ledgerTdStyle(true, true)}>Rs {c.semesterFee.toLocaleString()}</td>
                             </tr>
                         ))}
                     </tbody>
                 </table>
             </div>
         </div>
-
-        <p style={{color: '#64748b', fontSize: '0.9rem', marginTop: '40px', fontStyle: 'italic'}}>Note: Calculated amounts are based on current semester enrollment and tuition fees.</p>
       </div>
     );
   }
 
-  // --- 9. Transaction Summary ---
+  // --- 8. Transaction Summary ---
   if (reportType === "TS") {
     const filteredTxns = transactions.filter((t:any) => t.date >= fromDate && t.date <= toDate && t.status === "Posted" && t.type !== 'FEE_DUE');
     const displayTxns = filteredTxns.filter((t:any) => {
@@ -488,13 +553,30 @@ export const FinancialStatements = ({ transactions, accounts, students, masterDa
     content = (
         <div id="printable-area">
             <div className="no-print" style={{marginBottom: '15px', display: 'flex', gap: '5px'}}>
-                <button style={styles.tabButton(tsTab === 'ALL')} onClick={() => setTsTab('ALL')}>All</button>
-                <button style={styles.tabButton(tsTab === 'INCOME')} onClick={() => setTsTab('INCOME')}>Income Only</button>
-                <button style={styles.tabButton(tsTab === 'EXPENSE')} onClick={() => setTsTab('EXPENSE')}>Expense Only</button>
+                <button style={styles.tabButton(tsTab === 'ALL')} onClick={() => setTsTab('ALL')}>All Entries</button>
+                <button style={styles.tabButton(tsTab === 'INCOME')} onClick={() => setTsTab('INCOME')}>Receipts Only</button>
+                <button style={styles.tabButton(tsTab === 'EXPENSE')} onClick={() => setTsTab('EXPENSE')}>Payments Only</button>
             </div>
-            <table style={styles.table}>
-                <thead><tr><th style={styles.th}>Date</th><th style={styles.th}>Voucher</th><th style={styles.th}>Description</th><th style={{...styles.th, textAlign: 'right'}}>Amount</th></tr></thead>
-                <tbody>{displayTxns.map((t:any) => (<tr key={t.id}><td>{t.date}</td><td>{t.voucherNo}</td><td>{t.description}</td><td style={{textAlign: 'right'}}>{t.amount.toLocaleString()}</td></tr>))}</tbody>
+            <table style={ledgerTableStyle}>
+                <thead>
+                    <tr>
+                        <th style={ledgerThStyle}>Date</th>
+                        <th style={ledgerThStyle}>Voucher No</th>
+                        <th style={ledgerThStyle}>Narration / Details</th>
+                        <th style={{...ledgerThStyle, textAlign: 'right'}}>Amount (Rs)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {displayTxns.map((t:any, idx: number) => (
+                        <tr key={t.id} style={zebraRowStyle(idx)}>
+                            <td style={ledgerTdStyle()}>{t.date}</td>
+                            <td style={ledgerTdStyle()}><span style={{fontFamily: 'monospace', fontWeight: 600}}>{t.voucherNo}</span></td>
+                            <td style={ledgerTdStyle()}>{t.description}</td>
+                            <td style={ledgerTdStyle(true, true)}>{t.amount.toLocaleString()}</td>
+                        </tr>
+                    ))}
+                    {displayTxns.length === 0 && <tr><td colSpan={4} style={{...ledgerTdStyle(), textAlign: 'center', padding: '40px', color: '#94a3b8'}}>No posted transactions for selected criteria.</td></tr>}
+                </tbody>
             </table>
         </div>
     );
@@ -509,13 +591,13 @@ export const FinancialStatements = ({ transactions, accounts, students, masterDa
                 <div><label style={styles.label}>To Date</label><input type="date" style={styles.input} value={toDate} onChange={e => setToDate(e.target.value)} /></div>
              </div>
          ) : (
-             <div style={{fontWeight: 600, color: '#475569'}}>Summary View (No Date Filter Required)</div>
+             <div style={{fontWeight: 600, color: '#475569'}}>Summary View (Active Enrollment)</div>
          )}
          <div style={{marginLeft: 'auto', display: 'flex', gap: '10px'}}>
              {reportType === 'PL' && (
                  <>
                     <button style={{...styles.button("primary"), background: '#1e293b'}} onClick={() => handleExportPDF('printable-area', 'Profit_Loss_Report')}>
-                        <span className="material-symbols-outlined">picture_as_pdf</span> PDF
+                        <span className="material-symbols-outlined">picture_as_pdf</span> Export PDF
                     </button>
                     <button style={{...styles.button("secondary"), background: '#166534', color: 'white'}} onClick={() => handleExportExcel('printable-area', 'Profit_Loss_Report')}>
                         <span className="material-symbols-outlined">table_chart</span> Excel

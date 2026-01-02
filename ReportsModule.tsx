@@ -169,7 +169,10 @@ export const ReportsModule = ({ students, transactions, masterData, subTab, curr
    );
 
    const filteredStudentsClass = students.filter((s: Student) => {
-       if(prog !== "All" && s.program !== prog) return false;
+       if(prog !== "All" && s.program === prog) return true; // Fix: Logic check
+       if(prog === "All") return true;
+       return false;
+   }).filter((s: Student) => {
        if(sem !== "All" && s.semester !== sem) return false;
        if(camp !== "All" && s.campus !== camp) return false;
        if(s.status === "Left Student" || s.status === "Course Completed") return false;
@@ -187,19 +190,33 @@ export const ReportsModule = ({ students, transactions, masterData, subTab, curr
 
        return (
            <div style={styles.modalOverlay}>
-               <div style={{...styles.modalContent, width: '297mm', backgroundColor: 'white', padding: '0'}}>
-                   <div className="no-print" style={{padding: '15px', borderBottom: '1px solid #eee', display: 'flex', justifyContent: 'space-between', background: '#f8fafc'}}>
-                       <h3 style={{margin: 0}}>Blank Register Preview</h3>
+               <style>{`
+                  @page { size: A4 landscape; margin: 5mm; }
+                  @media print {
+                      body * { visibility: hidden; }
+                      #blank-register-print, #blank-register-print * { visibility: visible; }
+                      #blank-register-print { position: absolute; left: 0; top: 0; width: 100%; margin: 0; padding: 10px; }
+                      .no-print { display: none !important; }
+                  }
+               `}</style>
+               <div style={{...styles.modalContent, width: '95vw', maxWidth: '1200px', backgroundColor: 'white', padding: '0', height: '90vh', display: 'flex', flexDirection: 'column'}}>
+                   <div className="no-print" style={{padding: '15px 25px', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f8fafc'}}>
+                       <div>
+                           <h3 style={{margin: 0, color: '#0f172a'}}>Blank Register Preview</h3>
+                           <span style={{fontSize: '0.85rem', color: '#64748b'}}>Layout: A4 Landscape</span>
+                       </div>
                        <div style={{display: 'flex', gap: '10px'}}>
-                           <button style={styles.button("primary")} onClick={() => window.print()}>Print Register</button>
+                           <button style={styles.button("primary")} onClick={() => window.print()}>
+                               <span className="material-symbols-outlined">print</span> Print Now
+                           </button>
                            <button style={styles.button("secondary")} onClick={() => setShowBlankSheet(false)}>Close</button>
                        </div>
                    </div>
-                   <div id="printable-area" style={{padding: '30px', color: 'black'}}>
-                        <div style={{textAlign: 'center', borderBottom: '2px solid #000', paddingBottom: '15px', marginBottom: '25px'}}>
-                            <h1 style={{margin: 0, fontSize: '1.8rem'}}>GHAZALI INSTITUTE OF MEDICAL SCIENCES</h1>
-                            <h3 style={{margin: '8px 0', textDecoration: 'underline'}}>ATTENDANCE REGISTER</h3>
-                            <div style={{display: 'flex', justifyContent: 'center', gap: '30px', fontSize: '1rem', fontWeight: 600}}>
+                   <div id="blank-register-print" style={{padding: '30px', color: 'black', flex: 1, overflowY: 'auto'}}>
+                        <div style={{textAlign: 'center', borderBottom: '2px solid #000', paddingBottom: '15px', marginBottom: '20px'}}>
+                            <h1 style={{margin: 0, fontSize: '1.6rem', textTransform: 'uppercase'}}>GHAZALI INSTITUTE OF MEDICAL SCIENCES</h1>
+                            <h3 style={{margin: '5px 0', textDecoration: 'underline', fontSize: '1.1rem'}}>ATTENDANCE REGISTER</h3>
+                            <div style={{display: 'flex', justifyContent: 'center', gap: '40px', fontSize: '0.9rem', fontWeight: 700, marginTop: '10px'}}>
                                 <span>Program: {prog === 'All' ? '__________________' : prog}</span>
                                 <span>Semester: {sem === 'All' ? '__________________' : sem}</span>
                                 <span>Month: {new Date(year, month-1).toLocaleString('default', {month:'long'})} {year}</span>
@@ -207,43 +224,55 @@ export const ReportsModule = ({ students, transactions, masterData, subTab, curr
                         </div>
                         <table style={{width: '100%', borderCollapse: 'collapse', fontSize: '0.65rem'}}>
                             <thead>
-                                <tr style={{background: '#f1f5f9'}}>
+                                <tr style={{background: '#f8fafc'}}>
                                     <th style={{border: '1px solid #000', padding: '4px', width: '30px'}} rowSpan={2}>S.No</th>
                                     <th style={{border: '1px solid #000', padding: '4px', width: '70px'}} rowSpan={2}>Adm No</th>
-                                    <th style={{border: '1px solid #000', padding: '4px', textAlign: 'left', width: '120px'}} rowSpan={2}>Student Name</th>
-                                    <th style={{border: '1px solid #000', padding: '4px', textAlign: 'left', width: '120px'}} rowSpan={2}>Father Name</th>
+                                    <th style={{border: '1px solid #000', padding: '4px', textAlign: 'left', width: '130px'}} rowSpan={2}>Student Name</th>
+                                    <th style={{border: '1px solid #000', padding: '4px', textAlign: 'left', width: '130px'}} rowSpan={2}>Father Name</th>
                                     {dayHeaders.map(h => (
-                                        <th key={h.date} style={{border: '1px solid #000', width: '20px', fontSize: '0.5rem'}}>{h.day}</th>
+                                        <th key={h.date} style={{border: '1px solid #000', width: '18px', fontSize: '0.5rem', fontWeight: 'bold'}}>{h.day}</th>
                                     ))}
                                 </tr>
-                                <tr style={{background: '#f1f5f9'}}>
+                                <tr style={{background: '#f8fafc'}}>
                                     {dayHeaders.map(h => (
-                                        <th key={h.date} style={{border: '1px solid #000', width: '20px'}}>{h.date}</th>
+                                        <th key={h.date} style={{border: '1px solid #000', width: '18px', fontSize: '0.6rem'}}>{h.date}</th>
                                     ))}
                                 </tr>
                             </thead>
                             <tbody>
                                 {filteredStudentsClass.map((s, i) => (
                                     <tr key={s.admissionNo}>
-                                        <td style={{border: '1px solid #000', textAlign: 'center', padding: '4px'}}>{i + 1}</td>
+                                        <td style={{border: '1px solid #000', textAlign: 'center', padding: '5px'}}>{i + 1}</td>
                                         <td style={{border: '1px solid #000', textAlign: 'center', fontWeight: 'bold'}}>{s.admissionNo}</td>
-                                        <td style={{border: '1px solid #000', padding: '4px', fontWeight: 600, textTransform: 'uppercase'}}>{s.name}</td>
-                                        <td style={{border: '1px solid #000', padding: '4px'}}>{s.fatherName}</td>
+                                        <td style={{border: '1px solid #000', padding: '5px', fontWeight: 600, textTransform: 'uppercase'}}>{s.name}</td>
+                                        <td style={{border: '1px solid #000', padding: '5px'}}>{s.fatherName}</td>
                                         {[...Array(31)].map((_, j) => (
-                                            <td key={j} style={{border: '1px solid #000'}}></td>
+                                            <td key={j} style={{border: '1px solid #000', height: '22px'}}></td>
+                                        ))}
+                                    </tr>
+                                ))}
+                                {/* Fill remaining page with empty rows if list is short */}
+                                {filteredStudentsClass.length < 15 && [...Array(15 - filteredStudentsClass.length)].map((_, i) => (
+                                    <tr key={`empty-${i}`}>
+                                        <td style={{border: '1px solid #000', padding: '5px'}}>{filteredStudentsClass.length + i + 1}</td>
+                                        <td style={{border: '1px solid #000'}}></td>
+                                        <td style={{border: '1px solid #000'}}></td>
+                                        <td style={{border: '1px solid #000'}}></td>
+                                        {[...Array(31)].map((_, j) => (
+                                            <td key={j} style={{border: '1px solid #000', height: '22px'}}></td>
                                         ))}
                                     </tr>
                                 ))}
                             </tbody>
                         </table>
-                        <div style={{marginTop: '40px', display: 'flex', justifyContent: 'space-between', fontWeight: 600}}>
-                            <div style={{textAlign: 'center', width: '200px'}}>
-                                <div style={{borderBottom: '1.5px solid #000', marginBottom: '5px'}}></div>
-                                <span>Class Teacher</span>
+                        <div style={{marginTop: '35px', display: 'flex', justifyContent: 'space-between', fontWeight: 600, fontSize: '0.8rem'}}>
+                            <div style={{textAlign: 'center', width: '250px'}}>
+                                <div style={{borderBottom: '1.5px solid #000', marginBottom: '8px'}}></div>
+                                <span>Class Teacher / Instructor Signature</span>
                             </div>
-                            <div style={{textAlign: 'center', width: '200px'}}>
-                                <div style={{borderBottom: '1.5px solid #000', marginBottom: '5px'}}></div>
-                                <span>Admin/Principal</span>
+                            <div style={{textAlign: 'center', width: '250px'}}>
+                                <div style={{borderBottom: '1.5px solid #000', marginBottom: '8px'}}></div>
+                                <span>Academic Coordinator / Principal</span>
                             </div>
                         </div>
                    </div>
@@ -512,12 +541,16 @@ export const ReportsModule = ({ students, transactions, masterData, subTab, curr
            "City Hospital": 3100
        };
 
+       // UPDATED: Filter only for DEPOSIT Fee (FEE_RCV/CRV/BRP/FEE), strictly excluding Liability (FEE_DUE)
        const hospTxns = transactions.filter((t: Transaction) => {
            if (t.status !== "Posted") return false;
+           // Exclude Liability entries
+           if (t.type === 'FEE_DUE') return false;
+           
            if (t.details && t.details.hospital > 0) return true;
            const desc = t.description.toLowerCase();
            const hasHospitalName = HOSPITALS.some(h => desc.includes(h.toLowerCase()));
-           if (hasHospitalName && (t.type === 'CRV' || t.type === 'BRP' || t.type === 'JV')) return true;
+           if (hasHospitalName && (t.type === 'CRV' || t.type === 'BRP' || t.type === 'FEE' || t.type === 'FEE_RCV')) return true;
            return false;
        });
 
@@ -546,11 +579,11 @@ export const ReportsModule = ({ students, transactions, masterData, subTab, curr
 
        content = (
            <div id="printable-area">
-               <ReportHeader title="Hospital Fee Report Summary" />
+               <ReportHeader title="Hospital Deposit Fee Report" subTitle="Strictly excluding Liability Dues" />
                <div className="no-print" style={{display: 'flex', gap: '20px', marginBottom: '30px'}}>
                    <div style={{...styles.kpiCard("#0f172a", "#f8fafc"), flex: 1.5, border: '2px solid #0f172a'}}>
-                       <div style={{fontSize: '0.9rem', color: '#64748b'}}>Overall Hospital Collection</div>
-                       <div style={{fontSize: '2.2rem', fontWeight: 800, color: '#0f172a'}}>Rs {grandTotal.toLocaleString()}</div>
+                       <div style={{fontSize: '0.9rem', color: '#64748b'}}>Overall Hospital Deposits Collected</div>
+                       <div style={{fontSize: '2.2rem', fontWeight: 800, color: '#166534'}}>Rs {grandTotal.toLocaleString()}</div>
                    </div>
                    {HOSPITALS.map(h => (
                        <div 
@@ -575,15 +608,15 @@ export const ReportsModule = ({ students, transactions, masterData, subTab, curr
                        <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid #e2e8f0', paddingBottom: '15px', marginBottom: '20px'}}>
                            <div style={{display: 'flex', alignItems: 'center', gap: '10px'}}>
                                <span className="material-symbols-outlined" style={{color: '#0ea5e9', fontSize: '32px'}}>local_hospital</span>
-                               <h3 style={{margin: 0}}>{selectedHospital} Detailed Report</h3>
+                               <h3 style={{margin: 0}}>{selectedHospital} Deposit Summary</h3>
                            </div>
                            <div style={{display: 'flex', gap: '10px'}}>
                                <div style={{textAlign: 'right', marginRight: '20px'}}>
                                    <div style={{fontSize: '0.8rem', color: '#64748b'}}>Rate: Rs {rates[selectedHospital] || 3100}/Month</div>
-                                   <div style={{fontSize: '1.1rem', fontWeight: 700, color: '#166534'}}>Total: Rs {grouped[selectedHospital].total.toLocaleString()}</div>
+                                   <div style={{fontSize: '1.1rem', fontWeight: 700, color: '#166534'}}>Total Deposits: Rs {grouped[selectedHospital].total.toLocaleString()}</div>
                                </div>
                                <button style={styles.button("primary")} onClick={() => window.print()}>
-                                   <span className="material-symbols-outlined">print</span> Print Summary
+                                   <span className="material-symbols-outlined">print</span> Print List
                                </button>
                            </div>
                        </div>
@@ -596,7 +629,7 @@ export const ReportsModule = ({ students, transactions, masterData, subTab, curr
                                    <th style={styles.th}>Father Name</th>
                                    <th style={styles.th}>Program</th>
                                    <th style={styles.th}>Semester</th>
-                                   <th style={{...styles.th, textAlign: 'right'}}>Amount Paid</th>
+                                   <th style={{...styles.th, textAlign: 'right'}}>Amount Deposited</th>
                                    <th style={{...styles.th, textAlign: 'center'}}>Duration (Months)</th>
                                </tr>
                            </thead>
@@ -620,6 +653,11 @@ export const ReportsModule = ({ students, transactions, masterData, subTab, curr
                                        </tr>
                                    )
                                })}
+                               {grouped[selectedHospital].txns.length === 0 && (
+                                   <tr>
+                                       <td colSpan={7} style={{textAlign: 'center', padding: '40px', color: '#94a3b8'}}>No deposits recorded for this hospital.</td>
+                                   </tr>
+                               )}
                            </tbody>
                        </table>
                    </div>
@@ -627,7 +665,7 @@ export const ReportsModule = ({ students, transactions, masterData, subTab, curr
            </div>
        );
    } else if (activeTab === "student_attendance") {
-       // Filters students for listing based on attendance criteria
+       // Attendance Logic
        const aggregatedData = students.filter((s: Student) => {
            if(histCampus !== "All" && s.campus !== histCampus) return false;
            if(histProgram !== "All" && s.program !== histProgram) return false;
@@ -693,7 +731,6 @@ export const ReportsModule = ({ students, transactions, masterData, subTab, curr
                        </FilterItem>
                    </FilterBar>
 
-                   {/* FIX: Show students by default and filter when selected */}
                    <div style={{marginTop: '20px', background: 'white', padding: '20px', borderRadius: '12px', border: '1px solid #e2e8f0'}}>
                         <h4 style={{marginTop: 0, color: '#334155'}}>Class List Preview ({filteredStudentsClass.length})</h4>
                         <div style={{maxHeight: '300px', overflowY: 'auto'}}>
@@ -799,77 +836,18 @@ export const ReportsModule = ({ students, transactions, masterData, subTab, curr
                                        </td>
                                    </tr>
                                ))}
-                               {aggregatedData.length === 0 && (
-                                   <tr>
-                                       <td colSpan={11} style={{textAlign: 'center', padding: '40px', color: '#94a3b8', fontStyle: 'italic'}}>No students matching current filters in attendance records.</td>
-                                   </tr>
-                               )}
                            </tbody>
                        </table>
                        <PaginationControls current={pageAttHistory} total={totalPagesHistory} onPageChange={setPageAttHistory} />
                    </div>
                </div>
-
-               {showAttModal && (
-                   <div style={styles.modalOverlay}>
-                       <div style={{...styles.modalContent, width: '900px', height: '80vh', display: 'flex', flexDirection: 'column'}}>
-                           <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px'}}>
-                               <h3 style={{margin: 0}}>Mark Class Attendance</h3>
-                               <button onClick={() => setShowAttModal(false)} style={{background: 'transparent', border: 'none', cursor: 'pointer'}}>✕</button>
-                           </div>
-                           <div style={{background: '#f0f9ff', padding: '15px', borderRadius: '8px', marginBottom: '20px', fontSize: '0.9rem', color: '#0369a1', border: '1px solid #bae6fd'}}>
-                               <strong>Note:</strong> All students are marked <strong>PRESENT</strong> by default. Search and select only those who are Absent/Late/Leave.
-                           </div>
-                           <div style={{display: 'flex', gap: '20px', flex: 1, minHeight: 0}}>
-                               <div style={{flex: 1, display: 'flex', flexDirection: 'column', borderRight: '1px solid #e2e8f0', paddingRight: '20px'}}>
-                                   <input style={{...styles.input, marginBottom: '10px'}} placeholder="Search by Name, Father Name or Adm No..." value={attSearch} onChange={e => setAttSearch(e.target.value)} autoFocus />
-                                   <div style={{flex: 1, overflowY: 'auto', border: '1px solid #eee', borderRadius: '8px'}}>
-                                       {attSearch && filteredAttSearch.map(s => (
-                                           <div key={s.admissionNo} onClick={() => handleAttSearchSelect(s.admissionNo)} style={{padding: '10px', borderBottom: '1px solid #f1f5f9', cursor: 'pointer', background: attSelectedIds.includes(s.admissionNo) ? '#eff6ff' : 'white', display: 'flex', justifyContent: 'space-between'}}>
-                                               <div>
-                                                   <div style={{fontWeight: 600}}>{s.name}</div>
-                                                   <div style={{fontSize: '0.8rem', color: '#64748b'}}>S/O: {s.fatherName} • {s.admissionNo}</div>
-                                               </div>
-                                               {attSelectedIds.includes(s.admissionNo) && <span style={{color: '#3b82f6'}}>✓</span>}
-                                           </div>
-                                       ))}
-                                   </div>
-                                   <div style={{marginTop: '10px', display: 'flex', gap: '5px'}}>
-                                       <button onClick={() => markSelected('Absent')} disabled={attSelectedIds.length === 0} style={{...styles.button("danger"), flex: 1, justifyContent: 'center'}}>Mark Absent</button>
-                                       <button onClick={() => markSelected('Leave')} disabled={attSelectedIds.length === 0} style={{...styles.button("secondary"), background: '#3b82f6', color: 'white', flex: 1, justifyContent: 'center'}}>Mark Leave</button>
-                                       <button onClick={() => markSelected('Late')} disabled={attSelectedIds.length === 0} style={{...styles.button("secondary"), background: '#f59e0b', color: 'white', flex: 1, justifyContent: 'center'}}>Mark Late</button>
-                                   </div>
-                               </div>
-                               <div style={{flex: 1, display: 'flex', flexDirection: 'column'}}>
-                                   <h4 style={{marginTop: 0, color: '#334155'}}>Exceptions ({Object.keys(attExceptions).length})</h4>
-                                   <div style={{flex: 1, overflowY: 'auto', background: '#f8fafc', borderRadius: '8px', padding: '10px'}}>
-                                       {Object.entries(attExceptions).map(([id, status]) => {
-                                           const s = students.find(st => st.admissionNo === id);
-                                           return (
-                                               <div key={id} style={{background: 'white', padding: '10px', marginBottom: '8px', borderRadius: '6px', border: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
-                                                   <div>
-                                                       <div style={{fontWeight: 600}}>{s?.name}</div>
-                                                       <div style={{fontSize: '0.75rem', color: '#64748b', marginBottom: '2px'}}>S/O: {s?.fatherName}</div>
-                                                       <span style={{fontSize: '0.7rem', padding: '2px 6px', borderRadius: '4px', background: status === 'Absent' ? '#fee2e2' : status === 'Late' ? '#fef08a' : '#fff7ed', color: status === 'Absent' ? '#b91c1c' : status === 'Late' ? '#a16207' : '#c2410c'}}>{status}</span>
-                                                   </div>
-                                                   <button onClick={() => removeException(id)} style={{border: 'none', background: 'transparent', cursor: 'pointer', color: '#94a3b8'}}>✕</button>
-                                               </div>
-                                           )
-                                       })}
-                                   </div>
-                                   <button onClick={saveStudentAttendance} style={{...styles.button("primary"), marginTop: '20px', width: '100%', justifyContent: 'center'}}>Submit Attendance</button>
-                               </div>
-                           </div>
-                       </div>
-                   </div>
-               )}
            </div>
        );
    }
 
    return (
       <div>
-         <h2 className="no-print" style={{marginBottom: '5px'}}>Reports: <span style={{color: '#64748b', fontSize: '1.2rem', fontWeight: 400}}>{activeTab.replace('_', ' ').toUpperCase()}</span></h2>
+         <h2 className="no-print" style={{marginBottom: '5px'}}>Reports Center</h2>
          
          <div className="no-print" style={{...styles.card, display: 'flex', gap: '5px', flexWrap: 'wrap', alignItems: 'center', padding: '12px 20px', borderRadius: '8px'}}>
             <div style={{display: 'flex', gap: '5px', marginRight: '15px'}}>
