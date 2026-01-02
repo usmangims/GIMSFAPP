@@ -65,13 +65,11 @@ export const styles = {
       backgroundColor: bg, color: color, display: "inline-block", textTransform: "uppercase" as const
     };
   },
-  // Added scannerContainer for the FaceRecognitionScanner component
   scannerContainer: {
     width: "100%", height: "450px", backgroundColor: "#0f172a", borderRadius: "16px",
     position: "relative" as const, overflow: "hidden", display: "flex", 
     justifyContent: "center", alignItems: "center", boxShadow: "0 10px 25px rgba(0,0,0,0.2)"
   },
-  // Added scannerOverlay function for status-based visual feedback in FaceRecognitionScanner
   scannerOverlay: (status: 'neutral' | 'success' | 'danger') => ({
     position: "absolute" as const, top: "50px", left: "50px", right: "50px", bottom: "50px",
     border: `2px solid ${status === 'danger' ? '#ef4444' : status === 'success' ? '#22c55e' : 'rgba(255,255,255,0.3)'}`,

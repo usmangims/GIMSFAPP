@@ -5,7 +5,7 @@ import { styles } from "./styles";
 import { 
   Transaction, Student, Account, User, Employee, Budget, InventoryItem, InventoryIssuance, SMSLog, FeeStructure,
   INITIAL_PROGRAMS, INITIAL_SEMESTERS, INITIAL_BOARDS, INITIAL_CAMPUSES, INITIAL_ROLES, 
-  INITIAL_ACCOUNTS, INITIAL_STUDENTS_DATA, INITIAL_USERS, INITIAL_SESSIONS, Campus, INITIAL_DEPARTMENTS, INITIAL_EMPLOYEES_DATA, INITIAL_INVENTORY, INITIAL_INVENTORY_CATEGORIES, INITIAL_TRANSACTIONS, StudentAttendance, EmployeeAttendance, INITIAL_FEE_STRUCTURES
+  INITIAL_ACCOUNTS, INITIAL_STUDENTS_DATA, INITIAL_USERS, INITIAL_SESSIONS, Campus, INITIAL_DEPARTMENTS, INITIAL_EMPLOYEES_DATA, INITIAL_INVENTORY, INITIAL_INVENTORY_CATEGORIES, INITIAL_TRANSACTIONS, StudentAttendance, EmployeeAttendance, INITIAL_FEE_STRUCTURES, BiometricSettings
 } from "./types";
 
 import { Dashboard } from "./Dashboard";
@@ -31,7 +31,6 @@ import { PromotionModule } from "./PromotionModule";
 import { Login } from "./Login";
 import { SMSModule } from "./SMSModule";
 
-// --- Trial & Expiry Component ---
 const TrialLockScreen = ({ daysLeft }: { daysLeft: number }) => (
   <div style={{
     height: '100vh', width: '100vw', background: '#0f172a', display: 'flex', 
@@ -50,8 +49,7 @@ const TrialLockScreen = ({ daysLeft }: { daysLeft: number }) => (
       </div>
       <h1 style={{ color: '#0f172a', margin: '0 0 10px 0' }}>Trial Period Expired</h1>
       <p style={{ color: '#64748b', fontSize: '1.1rem', lineHeight: '1.6' }}>
-        Aap ka trial period khatam ho chuka hai. 
-        Software ko mazeed istemal karne ke liye administrator se raabta karein aur full version purchase karein.
+        Your trial period has ended. Please contact the administrator to activate the full version.
       </p>
       <div style={{ 
         marginTop: '30px', padding: '20px', background: '#f8fafc', 
@@ -73,10 +71,8 @@ const App = () => {
   const [finSubTab, setFinSubTab] = useState<string | null>(null);
   const [hrSubTab, setHrSubTab] = useState<string | null>(null);
   const [expandedMenu, setExpandedMenu] = useState<string | null>(null);
-
   const [userRole, setUserRole] = useState("Admin");
   const [roles, setRoles] = useState(INITIAL_ROLES);
-
   const [isTrialExpired, setIsTrialExpired] = useState(false);
   const [remainingDays, setRemainingDays] = useState(7);
   
@@ -87,7 +83,8 @@ const App = () => {
      semesters: INITIAL_SEMESTERS,
      sessions: INITIAL_SESSIONS,
      departments: INITIAL_DEPARTMENTS,
-     inventoryCategories: INITIAL_INVENTORY_CATEGORIES
+     inventoryCategories: INITIAL_INVENTORY_CATEGORIES,
+     biometric: { machineIP: "192.168.1.201", port: "4370", autoAttendance: true } as BiometricSettings
   });
 
   const [users, setUsers] = useState<User[]>(INITIAL_USERS);
@@ -111,11 +108,6 @@ const App = () => {
      "Cashier": { dashboard: false, cashbook: false, reports: false, vouchers: false, fees: true, bulk: false, ledger: false, students: false, promotion: false, accounts: false, approvals: false, master: false, access: false, import: false, history: false, financial: false, hr: false, budget: false, inventory: false, scanner: false, sms: false, settings: true }
   });
 
-  // --- Real SMS Integration Function ---
-  const sendRealSMS = async (number: string, message: string) => {
-      console.log(`[SMS-LOG] To: ${number}, Msg: ${message}`);
-  };
-
   useEffect(() => {
     const sysIdKey = 'gims_sys_id';
     if (!localStorage.getItem(sysIdKey)) {
@@ -133,8 +125,7 @@ const App = () => {
       }
       const TRIAL_PERIOD_DAYS = 7;
       const startTime = parseInt(localStorage.getItem('gims_sys_id') || Date.now().toString());
-      const currentTime = Date.now();
-      const diffMs = currentTime - startTime;
+      const diffMs = Date.now() - startTime;
       const diffDays = diffMs / (1000 * 60 * 60 * 24);
       if (diffDays > TRIAL_PERIOD_DAYS) setIsTrialExpired(true);
       else setRemainingDays(Math.ceil(TRIAL_PERIOD_DAYS - diffDays));
@@ -184,331 +175,312 @@ const App = () => {
   useEffect(() => { localStorage.setItem("gims_feeStructures", JSON.stringify(feeStructures)); }, [feeStructures]);
 
   const handlePostTransaction = (t: Transaction) => {
-    let finalStatus: "Posted" | "Pending" = "Posted";
-    if (userRole === "Cashier" || userRole === "Accountant") {
-       finalStatus = "Pending";
-       alert("Transaction sent for approval");
-    } else {
-       finalStatus = "Posted";
-    }
-
-    if (finalStatus === "Posted") {
-       if (t.type === 'FEE_DUE' && t.studentId) {
-          setStudents(prev => prev.map(s => s.admissionNo === t.studentId ? { ...s, balance: s.balance + t.amount } : s));
-       } 
-       else if ((t.type === 'FEE_RCV' || t.type === 'FEE') && t.studentId) {
-          setStudents(prev => {
-              const updated = prev.map(s => s.admissionNo === t.studentId ? { ...s, balance: s.balance - t.amount } : s);
-              const target = updated.find(s => s.admissionNo === t.studentId);
-              if (target && target.smsNumber) {
-                  const msg = `Dear ${target.name}, Rs. ${t.amount} deposit successfully. New Balance: Rs. ${target.balance}. GIMS.`;
-                  sendRealSMS(target.smsNumber, msg);
-                  // Log auto-fee SMS to history
-                  const now = new Date();
-                  setSmsHistory(prevHist => [{
-                      id: `AUTO-FEE-${Date.now()}`,
-                      date: now.toISOString().slice(0, 10),
-                      time: now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}),
-                      studentName: target.name,
-                      admissionNo: target.admissionNo,
-                      phone: target.smsNumber,
-                      message: msg,
-                      status: "Sent Successfully"
-                  }, ...prevHist]);
-              }
-              return updated;
-          });
+    let finalStatus: "Posted" | "Pending" = (userRole === "Cashier" || userRole === "Accountant") ? "Pending" : "Posted";
+    
+    const updatedTransactions = [...transactions, { ...t, status: finalStatus }];
+    
+    // Update student balance if it's a posted fee transaction
+    let updatedStudents = [...students];
+    if (finalStatus === "Posted" && t.studentId) {
+       const studentIdx = updatedStudents.findIndex(s => s.admissionNo === t.studentId);
+       if (studentIdx > -1) {
+          const s = updatedStudents[studentIdx];
+          let change = 0;
+          if (t.debitAccount === '1-01-004') change += t.amount;
+          if (t.creditAccount === '1-01-004') change -= t.amount;
+          updatedStudents[studentIdx] = { ...s, balance: s.balance + change };
        }
     }
-    setTransactions(prev => [...prev, { ...t, status: finalStatus, recordedBy: currentUser || userRole }]);
+
+    setTransactions(updatedTransactions);
+    setStudents(updatedStudents);
   };
 
-  const handleUpdateTransaction = (oldTxn: Transaction, newTxn: Transaction) => {
-     setTransactions(prev => prev.map(t => t.id === oldTxn.id ? newTxn : t));
-     let extraInfo = "";
-     if(oldTxn.studentId) {
-         const student = students.find(s => s.admissionNo === oldTxn.studentId);
-         if(student) extraInfo = `${student.name} s/o ${student.fatherName}`;
-     }
-     setAuditLogs(prev => [...prev, { id: Date.now(), action: "Edit", refId: oldTxn.voucherNo || oldTxn.id, user: userRole, date: new Date().toLocaleString(), extraInfo: extraInfo }]);
+  const handleUpdateMasterData = (key: string, value: any) => {
+     setMasterData({ ...masterData, [key]: value });
   };
 
-  const handleDeleteTransaction = (txn: Transaction, isRequest: boolean = false) => {
-     if (isRequest) {
-        setTransactions(prev => prev.map(t => t.id === txn.id ? { ...t, status: 'DeletePending' } : t));
-        alert("Deletion requested. Sent to Finance Manager for approval.");
-     } else {
-        setTransactions(prev => prev.filter(t => t.id !== txn.id));
-        let extraInfo = "";
-        if(txn.studentId) {
-            const student = students.find(s => s.admissionNo === txn.studentId);
-            if(student) extraInfo = `${student.name} s/o ${student.fatherName}`;
-        }
-        setAuditLogs(prev => [...prev, { id: Date.now(), action: "Delete", refId: txn.voucherNo || txn.id, user: userRole, date: new Date().toLocaleString(), extraInfo: extraInfo }]);
-     }
+  const handleAddEmployee = (emp: Employee) => setEmployees([...employees, emp]);
+  const handleUpdateEmployee = (emp: Employee) => setEmployees(employees.map(e => e.id === emp.id ? emp : e));
+  const handleDeleteEmployee = (id: string) => {
+      if(window.confirm("Delete employee record?")) setEmployees(employees.filter(e => e.id !== id));
   };
 
   const handleApprove = (id: string) => {
-     const txn = transactions.find(t => t.id === id);
-     if(txn) {
-        const updated = { ...txn, status: "Posted" as const };
-        setTransactions(prev => prev.map(t => t.id === id ? updated : t));
-        if(updated.type === 'FEE_DUE' && updated.studentId) {
-            setStudents(prev => prev.map(s => s.admissionNo === updated.studentId ? { ...s, balance: s.balance + updated.amount } : s));
-        } else if ((updated.type === 'FEE_RCV' || updated.type === 'FEE') && updated.studentId) {
-            setStudents(prev => {
-                const newList = prev.map(s => s.admissionNo === updated.studentId ? { ...s, balance: s.balance - updated.amount } : s);
-                const s = newList.find(st => st.admissionNo === updated.studentId);
-                if (s && s.smsNumber) {
-                    const msg = `Transaction Approved: Rs. ${updated.amount} received. New Balance: Rs. ${s.balance}. Regards GIMS Admin.`;
-                    sendRealSMS(s.smsNumber, msg);
-                    const now = new Date();
-                    setSmsHistory(prevHist => [{
-                        id: `AUTO-APP-${Date.now()}`,
-                        date: now.toISOString().slice(0, 10),
-                        time: now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}),
-                        studentName: s.name,
-                        admissionNo: s.admissionNo,
-                        phone: s.smsNumber,
-                        message: msg,
-                        status: "Sent Successfully"
-                    }, ...prevHist]);
-                }
-                return newList;
-            });
+     const t = transactions.find(tx => tx.id === id);
+     if (!t) return;
+     
+     const updatedTransactions = transactions.map(tx => tx.id === id ? { ...tx, status: 'Posted' as const } : tx);
+     
+     let updatedStudents = [...students];
+     if (t.studentId) {
+        const studentIdx = updatedStudents.findIndex(s => s.admissionNo === t.studentId);
+        if (studentIdx > -1) {
+           const s = updatedStudents[studentIdx];
+           let change = 0;
+           if (t.debitAccount === '1-01-004') change += t.amount;
+           if (t.creditAccount === '1-01-004') change -= t.amount;
+           updatedStudents[studentIdx] = { ...s, balance: s.balance + change };
         }
      }
+     
+     setTransactions(updatedTransactions);
+     setStudents(updatedStudents);
   };
 
-  const handleAddAccount = (acc: any) => {
-     setAccounts([...accounts, acc]);
-     if(acc.openingBalance > 0) {
-        const t: Transaction = {
-           id: `OP-${Date.now()}`, voucherNo: `JV-OPEN`, date: new Date().toISOString().slice(0, 10),
-           type: 'JV', description: `Opening Balance - ${acc.name}`,
-           debitAccount: acc.category === 'Asset' || acc.category === 'Expense' ? acc.code : '3-01-001', 
-           creditAccount: acc.category === 'Asset' || acc.category === 'Expense' ? '3-01-001' : acc.code,
-           amount: acc.openingBalance, status: 'Posted'
-        };
-        setTransactions(prev => [...prev, t]);
+  const handleDeleteTransaction = (t: Transaction, isRequest: boolean = true) => {
+     if (isRequest) {
+        setTransactions(transactions.map(tx => tx.id === t.id ? { ...tx, status: 'DeletePending' as const } : tx));
+        alert("Deletion request sent for approval.");
+     } else {
+        // Permanent Delete logic
+        let updatedStudents = [...students];
+        if (t.status === 'Posted' && t.studentId) {
+            const sIdx = updatedStudents.findIndex(s => s.admissionNo === t.studentId);
+            if (sIdx > -1) {
+                const s = updatedStudents[sIdx];
+                let reverseChange = 0;
+                if (t.debitAccount === '1-01-004') reverseChange -= t.amount;
+                if (t.creditAccount === '1-01-004') reverseChange += t.amount;
+                updatedStudents[sIdx] = { ...s, balance: s.balance + reverseChange };
+            }
+        }
+        setTransactions(transactions.filter(tx => tx.id !== t.id));
+        setStudents(updatedStudents);
+        setAuditLogs([...auditLogs, { id: Date.now(), refId: t.voucherNo || t.id, action: "Delete", user: currentUser, date: new Date().toLocaleString(), extraInfo: t.description }]);
      }
   };
 
-  const handleImportStudents = (data: any[]) => {
-     const newStudents = data.map((d: any) => ({ ...d, balance: Number(d.balance || 0), tuitionFee: Number(d.tuitionFee || 0), admissionFee: Number(d.admissionFee || 0), miscCharges: Number(d.miscCharges || 0), affiliationFee: Number(d.affiliationFee || 0), totalCourseFee: Number(d.totalCourseFee || 0) }));
-     setStudents(prev => [...prev, ...newStudents]);
-  };
-
-  const handleImportAccounts = (data: any[]) => {
-     const newAccs = data.map((d: any) => ({ ...d, level: Number(d.level) }));
-     setAccounts(prev => [...prev, ...newAccs]);
-  };
-
-  const updateMasterData = (key: string, val: any) => {
-     setMasterData(prev => ({ ...prev, [key]: val }));
-  };
-
-  const handleLogin = (role: string, username: string) => {
-      setUserRole(role); setCurrentUser(username); setIsAuthenticated(true);
-  };
-
-  const handleLogout = () => {
-      setIsAuthenticated(false); setCurrentUser(""); setActiveTab("dashboard");
-      setIsTrialExpired(false);
-  };
-
-  const SettingsComponent = () => {
-      const [currentPass, setCurrentPass] = useState("");
-      const [newPass, setNewPass] = useState("");
-      const handleChangePassword = () => {
-          if (!currentPass || !newPass) return alert("Please enter both current and new passwords");
-          const user = users.find(u => u.username === currentUser);
-          if (user) {
-              if(user.password === currentPass) {
-                  const updatedUsers = [...users];
-                  const idx = updatedUsers.findIndex(u => u.username === currentUser);
-                  updatedUsers[idx] = { ...user, password: newPass };
-                  setUsers(updatedUsers);
-                  alert("Password updated successfully!");
-                  setCurrentPass(""); setNewPass("");
-              } else { alert("Incorrect current password."); }
+  const handleUpdateTransaction = (oldT: Transaction, newT: Transaction) => {
+      let updatedStudents = [...students];
+      // Reverse old
+      if (oldT.status === 'Posted' && oldT.studentId) {
+          const sIdx = updatedStudents.findIndex(s => s.admissionNo === oldT.studentId);
+          if (sIdx > -1) {
+              let rev = 0;
+              if (oldT.debitAccount === '1-01-004') rev -= oldT.amount;
+              if (oldT.creditAccount === '1-01-004') rev += oldT.amount;
+              updatedStudents[sIdx].balance += rev;
           }
-      };
-      return (
-        <div style={styles.card}>
-            <h2 style={{marginBottom: '20px', color: '#000'}}>Settings</h2>
-            <div style={{marginBottom: '30px'}}>
-                <h3 style={{color: '#000', borderBottom: '1px solid #e2e8f0', paddingBottom: '10px', marginBottom: '20px'}}>Account Settings</h3>
-                <div style={styles.grid2}>
-                    <div><label style={styles.label}>Current Password</label><input type="password" style={styles.input} placeholder="********" value={currentPass} onChange={e => setCurrentPass(e.target.value)} /></div>
-                    <div><label style={styles.label}>New Password</label><input type="password" style={styles.input} placeholder="********" value={newPass} onChange={e => setNewPass(e.target.value)} /></div>
-                </div>
-                <button style={{...styles.button("primary"), marginTop: '15px'}} onClick={handleChangePassword}>Update Password</button>
-            </div>
-            <div>
-                <h3 style={{color: '#000', borderBottom: '1px solid #e2e8f0', paddingBottom: '10px', marginBottom: '20px'}}>Logout</h3>
-                <button style={styles.button("danger")} onClick={handleLogout}>Logout</button>
-            </div>
-        </div>
-      );
+      }
+      // Apply new
+      if (newT.status === 'Posted' && newT.studentId) {
+          const sIdx = updatedStudents.findIndex(s => s.admissionNo === newT.studentId);
+          if (sIdx > -1) {
+              let app = 0;
+              if (newT.debitAccount === '1-01-004') app += newT.amount;
+              if (newT.creditAccount === '1-01-004') app -= newT.amount;
+              updatedStudents[sIdx].balance += app;
+          }
+      }
+      setTransactions(transactions.map(tx => tx.id === oldT.id ? newT : tx));
+      setStudents(updatedStudents);
+      setAuditLogs([...auditLogs, { id: Date.now(), refId: oldT.voucherNo || oldT.id, action: "Edit", user: currentUser, date: new Date().toLocaleString(), extraInfo: `Amount: ${oldT.amount} -> ${newT.amount}` }]);
   };
 
-  const renderContent = () => {
-    switch(activeTab) {
-      case "dashboard": return <Dashboard transactions={transactions} accounts={accounts} students={students} masterData={masterData} currentUser={currentUser || userRole} />;
-      case "students": return <StudentBiodata students={students} onAddStudent={(s: Student) => setStudents([...students, s])} onDeleteStudent={(id: string) => setStudents(students.filter(s => s.admissionNo !== id))} onUpdateStudent={(s: Student) => setStudents(students.map(st => st.admissionNo === s.admissionNo ? s : st))} masterData={masterData} currentUser={currentUser || userRole} feeStructures={feeStructures} />;
-      case "promotion": return <PromotionModule students={students} onUpdateStudents={setStudents} masterData={masterData} />;
-      case "cashbook": return <CashBook transactions={transactions} students={students} accounts={accounts} masterData={masterData} userRole={userRole} onDelete={handleDeleteTransaction} onUpdate={handleUpdateTransaction} />;
-      case "vouchers": return <VoucherSystem onPostTransaction={handlePostTransaction} accounts={accounts} transactions={transactions} onDelete={handleDeleteTransaction} onUpdate={handleUpdateTransaction} masterData={masterData} userRole={userRole} />;
-      case "fees": return <FeeCollection students={students} onCollectFee={handlePostTransaction} masterData={masterData} accounts={accounts} currentUser={currentUser} />;
-      case "ledger": return <StudentLedger students={students} transactions={transactions} masterData={masterData} />;
-      case "bulk": return <FeeGenerationModule students={students} onGenerate={(txns: Transaction[]) => { txns.forEach(t => handlePostTransaction(t)); }} masterData={masterData} transactions={transactions} />;
-      case "reports": return <ReportsModule students={students} transactions={transactions} masterData={masterData} subTab={reportSubTab} currentUser={currentUser || userRole} studentAttendance={studentAttendance} setStudentAttendance={setStudentAttendance} />;
-      case "financial": return <FinancialStatements transactions={transactions} accounts={accounts} students={students} masterData={masterData} subTab={finSubTab} />;
-      case "accounts": return <ChartOfAccounts accounts={accounts} onAddAccount={handleAddAccount} />;
-      case "approvals": return <Approvals transactions={transactions} onApprove={handleApprove} onDelete={handleDeleteTransaction} onUpdate={handleUpdateTransaction} students={students} accounts={accounts} />;
-      case "master": return <MasterDataManager data={masterData} onUpdate={updateMasterData} students={students} users={users} onUpdateUsers={setUsers} roles={roles} onUpdateRoles={setRoles} feeStructures={feeStructures} onUpdateFeeStructures={setFeeStructures} />;
-      case "access": return <AccessControl permissions={permissions} onUpdate={setPermissions} roles={roles} />;
-      case "import": return <DataImport onImportStudents={handleImportStudents} onImportAccounts={handleImportAccounts} />;
-      case "history": return <HistoryModule logs={auditLogs} />;
-      case "hr": return <HRModule employees={employees} onAddEmployee={(e: Employee) => setEmployees([...employees, e])} onUpdateEmployee={(e: Employee) => setEmployees(employees.map(emp => emp.id === e.id ? e : emp))} onDeleteEmployee={(id: string) => setEmployees(employees.filter(e => e.id !== id))} masterData={masterData} onPostPayroll={handlePostTransaction} onUpdateMasterData={updateMasterData} employeeAttendance={employeeAttendance} setEmployeeAttendance={setEmployeeAttendance} subTab={hrSubTab} />;
-      case "budget": return <BudgetModule budgets={budgets} setBudgets={setBudgets} masterData={masterData} transactions={transactions} students={students} />;
-      case "inventory": return <InventoryModule inventory={inventory} setInventory={setInventory} issuances={issuances} setIssuances={setIssuances} employees={employees} masterData={masterData} currentUser={currentUser || userRole} onUpdateMasterData={updateMasterData} />;
-      case "scanner": return <FaceRecognitionScanner students={students} userRole={userRole} />;
-      case "sms": return <SMSModule students={students} masterData={masterData} smsHistory={smsHistory} setSmsHistory={setSmsHistory} />;
-      case "settings": return <SettingsComponent />;
-      default: return <Dashboard transactions={transactions} accounts={accounts} students={students} masterData={masterData} currentUser={currentUser || userRole} />;
-    }
+  const handleBulkGenerate = (newTxns: Transaction[]) => {
+      let updatedStudents = [...students];
+      newTxns.forEach(t => {
+          const sIdx = updatedStudents.findIndex(s => s.admissionNo === t.studentId);
+          if (sIdx > -1) updatedStudents[sIdx].balance += t.amount;
+      });
+      setTransactions([...transactions, ...newTxns]);
+      setStudents(updatedStudents);
   };
 
-  const checkPerm = (mod: string) => {
-     return permissions[userRole]?.[mod];
+  const handleAutoAttendance = (student: Student) => {
+      const today = new Date().toISOString().slice(0, 10);
+      const existing = studentAttendance.find(a => a.date === today && a.campus === student.campus && a.program === student.program && a.semester === student.semester);
+      
+      const record = { studentId: student.admissionNo, name: student.name, status: "Present" as const };
+      
+      if (existing) {
+          if (existing.records.some(r => r.studentId === student.admissionNo)) return;
+          const updated = { ...existing, records: [...existing.records, record] };
+          setStudentAttendance(studentAttendance.map(a => a.id === existing.id ? updated : a));
+      } else {
+          const newAtt: StudentAttendance = {
+              id: `ATT-AUTO-${Date.now()}`,
+              date: today,
+              campus: student.campus,
+              program: student.program,
+              semester: student.semester,
+              teacher: "Biometric System",
+              records: [record]
+          };
+          setStudentAttendance([...studentAttendance, newAtt]);
+      }
   };
 
-  if (isTrialExpired) {
+  const NavItem = ({ id, label, icon, subItems }: any) => {
+    const isActive = activeTab === id || (subItems && subItems.some((s: any) => activeTab === s.id));
+    const isExpanded = expandedMenu === id;
+
     return (
-       <div style={{position:'relative'}}>
-          <TrialLockScreen daysLeft={0} />
-          <button 
-             onClick={handleLogout} 
-             style={{position:'absolute', top: '20px', right: '20px', ...styles.button("secondary")}}
-          >Logout</button>
-       </div>
+      <div style={{ marginBottom: '4px' }}>
+        <div 
+          onClick={() => {
+            if (subItems) setExpandedMenu(isExpanded ? null : id);
+            else { setActiveTab(id); setHrSubTab(null); setReportSubTab(null); setFinSubTab(null); }
+          }}
+          style={styles.navItem(isActive)}
+        >
+          <span className="material-symbols-outlined">{icon}</span>
+          <span style={{ flex: 1 }}>{label}</span>
+          {subItems && <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>{isExpanded ? 'expand_less' : 'expand_more'}</span>}
+        </div>
+        {subItems && isExpanded && (
+          <div style={{ display: 'flex', flexDirection: 'column', marginTop: '2px' }}>
+            {subItems.map((sub: any) => {
+              const isSubActive = activeTab === sub.id && 
+                (!sub.setter || 
+                 (sub.val === reportSubTab || sub.val === finSubTab || sub.val === hrSubTab));
+                 
+              return (
+                <div 
+                  key={sub.label + sub.val} 
+                  onClick={() => { 
+                    setActiveTab(sub.id); 
+                    if(sub.setter) sub.setter(sub.val); 
+                  }}
+                  style={styles.navSubItem(isSubActive)}
+                >
+                  {sub.label}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
     );
-  }
+  };
 
-  if (!isAuthenticated) {
-      return <Login onLogin={handleLogin} users={users} />;
-  }
+  if (!isAuthenticated) return <Login onLogin={(role: string, user: string) => { setIsAuthenticated(true); setUserRole(role); setCurrentUser(user); }} users={users} />;
+  if (isTrialExpired) return <TrialLockScreen daysLeft={remainingDays} />;
 
   return (
     <div style={styles.appContainer}>
-      <div style={styles.sidebar}>
+      {/* Sidebar */}
+      <div className="no-print" style={styles.sidebar}>
         <div style={styles.brand}>
-          <span className="material-symbols-outlined">account_balance</span>
-          <div style={{display:'flex', flexDirection:'column'}}>
-             <span style={{fontSize: '1.5rem', fontWeight: 800, letterSpacing: '2px'}}>GIMS</span>
+          <span className="material-symbols-outlined" style={{ fontSize: '32px' }}>account_balance</span>
+          <span>GIMS FINANCE</span>
+        </div>
+
+        <div style={{ padding: '16px', background: '#1e293b', margin: '16px', borderRadius: '12px', border: '1px solid #334155' }}>
+           <div style={{ fontSize: '0.7rem', color: '#94a3b8', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.5px' }}>Logged in as</div>
+           <div style={{ color: 'white', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
+              <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#22c55e' }}></div>
+              {userRole}
+           </div>
+           <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '2px' }}>@{currentUser}</div>
+           {remainingDays < 999 && <div style={{ fontSize: '0.7rem', color: '#f59e0b', marginTop: '8px', fontWeight: 600 }}>TRIAL: {remainingDays} Days Left</div>}
+        </div>
+
+        <div style={styles.nav}>
+          {permissions[userRole].dashboard && <NavItem id="dashboard" label="Dashboard" icon="dashboard" />}
+          
+          {(permissions[userRole].students || permissions[userRole].promotion) && (
+             <NavItem id="students_menu" label="Student Center" icon="school" subItems={[
+                permissions[userRole].students && { id: 'students', label: 'Student Biodata' },
+                permissions[userRole].promotion && { id: 'promotion', label: 'Student Promotion' }
+             ].filter(Boolean)} />
+          )}
+
+          {permissions[userRole].cashbook && <NavItem id="cashbook" label="Cash Book" icon="menu_book" />}
+          {permissions[userRole].vouchers && <NavItem id="vouchers" label="Voucher Entry" icon="receipt" />}
+          
+          {(permissions[userRole].fees || permissions[userRole].ledger || permissions[userRole].bulk) && (
+            <NavItem id="fees_menu" label="Fee Management" icon="payments" subItems={[
+               permissions[userRole].fees && { id: 'fees', label: 'Fee Collection' },
+               permissions[userRole].ledger && { id: 'ledger', label: 'Student Ledger' },
+               permissions[userRole].bulk && { id: 'bulk', label: 'Fee Generation' }
+            ].filter(Boolean)} />
+          )}
+
+          {permissions[userRole].hr && (
+            <NavItem id="hr" label="HR & Payroll" icon="badge" subItems={[
+               { id: 'hr', label: 'Registration', val: 'registration', setter: setHrSubTab },
+               { id: 'hr', label: 'Employee List', val: 'list', setter: setHrSubTab },
+               { id: 'hr', label: 'Departments', val: 'departments', setter: setHrSubTab },
+               { id: 'hr', label: 'Attendance', val: 'attendance', setter: setHrSubTab },
+               { id: 'hr', label: 'Deductions', val: 'deductions', setter: setHrSubTab },
+               { id: 'hr', label: 'Payroll Sheet', val: 'payroll_report', setter: setHrSubTab },
+               { id: 'hr', label: 'Reports', val: 'employee_report', setter: setHrSubTab },
+            ]} />
+          )}
+
+          {permissions[userRole].inventory && <NavItem id="inventory" label="Inventory" icon="inventory_2" />}
+          {permissions[userRole].budget && <NavItem id="budget" label="Budgeting" icon="monitoring" />}
+
+          {permissions[userRole].reports && (
+            <NavItem id="reports" label="Operational Reports" icon="summarize" subItems={[
+               { id: 'reports', label: 'Defaulters List', val: 'defaulters', setter: setReportSubTab },
+               { id: 'reports', label: 'Student List', val: 'students_list', setter: setReportSubTab },
+               { id: 'reports', label: 'Admission Register', val: 'admission_reg', setter: setReportSubTab },
+               { id: 'reports', label: 'Hospital Report', val: 'hospital_report', setter: setReportSubTab },
+               { id: 'reports', label: 'Student Attendance', val: 'student_attendance', setter: setReportSubTab },
+            ]} />
+          )}
+
+          {permissions[userRole].financial && (
+            <NavItem id="financial" label="Financial Statements" icon="account_balance" subItems={[
+               { id: 'financial', label: 'Trial Balance', val: 'TB', setter: setFinSubTab },
+               { id: 'financial', label: 'Profit & Loss', val: 'PL', setter: setFinSubTab },
+               { id: 'financial', label: 'Income Statement', val: 'IS', setter: setFinSubTab },
+               { id: 'financial', label: 'Balance Sheet', val: 'BS', setter: setFinSubTab },
+               { id: 'financial', label: 'General Ledger', val: 'GL', setter: setFinSubTab },
+               { id: 'financial', label: 'Revenue Dashboard', val: 'BGT', setter: setFinSubTab },
+               { id: 'financial', label: 'Trans. Summary', val: 'TS', setter: setFinSubTab }
+            ]} />
+          )}
+
+          {permissions[userRole].scanner && <NavItem id="scanner" label="Biometrics" icon="biometric_setup" />}
+          {permissions[userRole].sms && <NavItem id="sms" label="SMS Module" icon="sms" />}
+
+          <div style={{ marginTop: '20px', borderTop: '1px solid #1e293b', paddingTop: '10px' }}>
+            {permissions[userRole].approvals && <NavItem id="approvals" label="Approvals" icon="verified_user" />}
+            {permissions[userRole].accounts && <NavItem id="accounts" label="Chart of Accounts" icon="account_tree" />}
+            {permissions[userRole].master && <NavItem id="master" label="Master Data" icon="settings" />}
+            {permissions[userRole].access && <NavItem id="access" label="Access Control" icon="lock" />}
+            {permissions[userRole].import && <NavItem id="import" label="Data Import" icon="upload_file" />}
+            {permissions[userRole].history && <NavItem id="history" label="History" icon="history" />}
           </div>
         </div>
-        <div style={{padding: '0 16px', marginBottom: '20px'}}>
-           <div style={{padding: '12px', background: '#1e293b', borderRadius: '8px', border: '1px solid #334155'}}>
-               <div style={{fontSize: '0.75rem', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px'}}>Logged in as</div>
-               <div style={{color: 'white', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px'}}>
-                   <div style={{width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#22c55e'}}></div>
-                   {userRole}
-               </div>
-               <div style={{fontSize: '0.8rem', color: '#64748b', marginTop: '2px'}}>@{currentUser}</div>
-           </div>
-        </div>
-        <div style={styles.nav}>
-          {checkPerm("dashboard") && <div style={styles.navItem(activeTab === "dashboard")} onClick={() => { setActiveTab("dashboard"); setExpandedMenu(null); }}><span className="material-symbols-outlined">dashboard</span> Dashboard</div>}
-          {checkPerm("cashbook") && <div style={styles.navItem(activeTab === "cashbook")} onClick={() => { setActiveTab("cashbook"); setExpandedMenu(null); }}><span className="material-symbols-outlined">menu_book</span> Cash Book</div>}
-          {checkPerm("students") && <div style={styles.navItem(activeTab === "students")} onClick={() => { setActiveTab("students"); setExpandedMenu(null); }}><span className="material-symbols-outlined">school</span> Student Biodata</div>}
-          {checkPerm("promotion") && <div style={styles.navItem(activeTab === "promotion")} onClick={() => { setActiveTab("promotion"); setExpandedMenu(null); }}><span className="material-symbols-outlined">upgrade</span> Promotion</div>}
-          {checkPerm("scanner") && <div style={styles.navItem(activeTab === "scanner")} onClick={() => { setActiveTab("scanner"); setExpandedMenu(null); }}><span className="material-symbols-outlined">face</span> Security Scanner</div>}
-          {checkPerm("sms") && <div style={styles.navItem(activeTab === "sms")} onClick={() => { setActiveTab("sms"); setExpandedMenu(null); }}><span className="material-symbols-outlined">sms</span> SMS Center</div>}
-          {checkPerm("fees") && <div style={styles.navItem(activeTab === "fees")} onClick={() => { setActiveTab("fees"); setExpandedMenu(null); }}><span className="material-symbols-outlined">payments</span> Fee Collection</div>}
-          {checkPerm("ledger") && <div style={styles.navItem(activeTab === "ledger")} onClick={() => { setActiveTab("ledger"); setExpandedMenu(null); }}><span className="material-symbols-outlined">history_edu</span> Student Ledger</div>}
-          {checkPerm("bulk") && <div style={styles.navItem(activeTab === "bulk")} onClick={() => { setActiveTab("bulk"); setExpandedMenu(null); }}><span className="material-symbols-outlined">playlist_add_check</span> Fee Generation</div>}
-          
-          {checkPerm("reports") && (
-             <>
-               <div style={{...styles.navItem(activeTab === "reports"), justifyContent: 'space-between'}} onClick={() => setExpandedMenu(expandedMenu === 'reports' ? null : 'reports')}>
-                  <div style={{display:'flex', gap:'12px', alignItems:'center'}}><span className="material-symbols-outlined">summarize</span> Reports</div>
-                  <span className="material-symbols-outlined" style={{fontSize: '18px'}}>{expandedMenu === 'reports' ? 'expand_less' : 'expand_more'}</span>
-               </div>
-               {expandedMenu === 'reports' && (
-                  <div>
-                     <div style={styles.navSubItem(reportSubTab === "defaulters")} onClick={() => { setActiveTab("reports"); setReportSubTab("defaulters"); }}>Defaulters List</div>
-                     <div style={styles.navSubItem(reportSubTab === "students_list")} onClick={() => { setActiveTab("reports"); setReportSubTab("students_list"); }}>Students List</div>
-                     <div style={styles.navSubItem(reportSubTab === "admission_reg")} onClick={() => { setActiveTab("reports"); setReportSubTab("admission_reg"); }}>Admission Register</div>
-                     <div style={styles.navSubItem(reportSubTab === "hospital_report")} onClick={() => { setActiveTab("reports"); setReportSubTab("hospital_report"); }}>Hospital Report</div>
-                     <div style={styles.navSubItem(reportSubTab === "student_attendance")} onClick={() => { setActiveTab("reports"); setReportSubTab("student_attendance"); }}>Student Attendance</div>
-                  </div>
-               )}
-             </>
-          )}
 
-          {checkPerm("financial") && (
-             <>
-               <div style={{...styles.navItem(activeTab === "financial"), justifyContent: 'space-between'}} onClick={() => setExpandedMenu(expandedMenu === 'financial' ? null : 'financial')}>
-                  <div style={{display:'flex', gap:'12px', alignItems:'center'}}><span className="material-symbols-outlined">bar_chart</span> Financial Statements</div>
-                  <span className="material-symbols-outlined" style={{fontSize: '18px'}}>{expandedMenu === 'financial' ? 'expand_less' : 'expand_more'}</span>
-               </div>
-               {expandedMenu === 'financial' && (
-                  <div>
-                     <div style={styles.navSubItem(finSubTab === "TB")} onClick={() => { setActiveTab("financial"); setFinSubTab("TB"); }}>Trial Balance</div>
-                     <div style={styles.navSubItem(finSubTab === "IS")} onClick={() => { setActiveTab("financial"); setFinSubTab("IS"); }}>Income Statement</div>
-                     <div style={styles.navSubItem(finSubTab === "BS")} onClick={() => { setActiveTab("financial"); setFinSubTab("BS"); }}>Balance Sheet</div>
-                     <div style={styles.navSubItem(finSubTab === "GL")} onClick={() => { setActiveTab("financial"); setFinSubTab("GL"); }}>General Ledger</div>
-                     <div style={styles.navSubItem(finSubTab === "TS")} onClick={() => { setActiveTab("financial"); setFinSubTab("TS"); }}>Transaction Summary</div>
-                     <div style={styles.navSubItem(finSubTab === "PROG_SUM")} onClick={() => { setActiveTab("financial"); setFinSubTab("PROG_SUM"); }}>Program Summary</div>
-                     <div style={styles.navSubItem(finSubTab === "BOARD_SUM")} onClick={() => { setActiveTab("financial"); setFinSubTab("BOARD_SUM"); }}>Board Summary</div>
-                     <div style={styles.navSubItem(finSubTab === "IE_SUM")} onClick={() => { setActiveTab("financial"); setFinSubTab("IE_SUM"); }}>Inc/Exp Summary</div>
-                     <div style={styles.navSubItem(finSubTab === "BGT")} onClick={() => { setActiveTab("financial"); setFinSubTab("BGT"); }}>Projected Revenue</div>
-                  </div>
-               )}
-             </>
-          )}
-
-          {checkPerm("vouchers") && <div style={styles.navItem(activeTab === "vouchers")} onClick={() => { setActiveTab("vouchers"); setExpandedMenu(null); }}><span className="material-symbols-outlined">receipt</span> Vouchers</div>}
-          {checkPerm("accounts") && <div style={styles.navItem(activeTab === "accounts")} onClick={() => { setActiveTab("accounts"); setExpandedMenu(null); }}><span className="material-symbols-outlined">account_tree</span> Chart of Accounts</div>}
-          
-          {checkPerm("hr") && (
-             <>
-               <div style={{...styles.navItem(activeTab === "hr"), justifyContent: 'space-between'}} onClick={() => setExpandedMenu(expandedMenu === 'hr' ? null : 'hr')}>
-                  <div style={{display:'flex', gap:'12px', alignItems:'center'}}><span className="material-symbols-outlined">badge</span> HR Section</div>
-                  <span className="material-symbols-outlined" style={{fontSize: '18px'}}>{expandedMenu === 'hr' ? 'expand_less' : 'expand_more'}</span>
-               </div>
-               {expandedMenu === 'hr' && (
-                  <div>
-                     <div style={styles.navSubItem(hrSubTab === "registration")} onClick={() => { setActiveTab("hr"); setHrSubTab("registration"); }}>Registration</div>
-                     <div style={styles.navSubItem(hrSubTab === "list")} onClick={() => { setActiveTab("hr"); setHrSubTab("list"); }}>Employee List</div>
-                     <div style={styles.navSubItem(hrSubTab === "attendance")} onClick={() => { setActiveTab("hr"); setHrSubTab("attendance"); }}>Daily Attendance</div>
-                     <div style={styles.navSubItem(hrSubTab === "deductions")} onClick={() => { setActiveTab("hr"); setHrSubTab("deductions"); }}>Manage Deductions</div>
-                     <div style={styles.navSubItem(hrSubTab === "payroll_report")} onClick={() => { setActiveTab("hr"); setHrSubTab("payroll_report"); }}>Payroll Processing</div>
-                     <div style={styles.navSubItem(hrSubTab === "departments")} onClick={() => { setActiveTab("hr"); setHrSubTab("departments"); }}>Departments</div>
-                     <div style={styles.navSubItem(hrSubTab === "employee_report")} onClick={() => { setActiveTab("hr"); setHrSubTab("employee_report"); }}>HR Reports</div>
-                  </div>
-               )}
-             </>
-          )}
-
-          {checkPerm("approvals") && <div style={styles.navItem(activeTab === "approvals")} onClick={() => { setActiveTab("approvals"); setExpandedMenu(null); }}>
-             <span className="material-symbols-outlined">verified</span> Approvals
-          </div>}
-          {checkPerm("budget") && <div style={styles.navItem(activeTab === "budget")} onClick={() => { setActiveTab("budget"); setExpandedMenu(null); }}><span className="material-symbols-outlined">account_balance_wallet</span> Budgeting</div>}
-          {checkPerm("inventory") && <div style={styles.navItem(activeTab === "inventory")} onClick={() => { setActiveTab("inventory"); setExpandedMenu(null); }}><span className="material-symbols-outlined">inventory_2</span> Inventory</div>}
-          {checkPerm("master") && <div style={styles.navItem(activeTab === "master")} onClick={() => { setActiveTab("master"); setExpandedMenu(null); }}><span className="material-symbols-outlined">settings</span> Master Data</div>}
-          {checkPerm("access") && <div style={styles.navItem(activeTab === "access")} onClick={() => { setActiveTab("access"); setExpandedMenu(null); }}><span className="material-symbols-outlined">lock</span> Access Control</div>}
-          {checkPerm("import") && <div style={styles.navItem(activeTab === "import")} onClick={() => { setActiveTab("import"); setExpandedMenu(null); }}><span className="material-symbols-outlined">upload_file</span> Data Import</div>}
-          {checkPerm("history") && <div style={styles.navItem(activeTab === "history")} onClick={() => { setActiveTab("history"); setExpandedMenu(null); }}><span className="material-symbols-outlined">history</span> History</div>}
-          
-          {checkPerm("settings") && <div style={styles.navItem(activeTab === "settings")} onClick={() => { setActiveTab("settings"); setExpandedMenu(null); }}><span className="material-symbols-outlined">settings_applications</span> Settings</div>}
+        <div style={{ marginTop: 'auto', borderTop: '1px solid #1e293b', padding: '16px' }}>
+           <button 
+             onClick={() => setIsAuthenticated(false)}
+             style={{ ...styles.button("secondary"), width: '100%', background: 'transparent', color: '#94a3b8', border: '1px solid #334155' }}
+           >
+             <span className="material-symbols-outlined">logout</span> Logout
+           </button>
         </div>
       </div>
+
+      {/* Main Content */}
       <div style={styles.main}>
-        {renderContent()}
+        {activeTab === "dashboard" && permissions[userRole].dashboard && <Dashboard transactions={transactions} accounts={accounts} students={students} masterData={masterData} currentUser={currentUser} setActiveTab={setActiveTab} />}
+        {activeTab === "students" && permissions[userRole].students && <StudentBiodata students={students} onAddStudent={(s: Student) => setStudents([...students, s])} onDeleteStudent={(id: string) => setStudents(students.filter(s => s.admissionNo !== id))} onUpdateStudent={(s: Student) => setStudents(students.map(st => st.admissionNo === s.admissionNo ? s : st))} masterData={masterData} currentUser={currentUser} feeStructures={feeStructures} />}
+        {activeTab === "promotion" && permissions[userRole].promotion && <PromotionModule students={students} onUpdateStudents={setStudents} masterData={masterData} />}
+        {activeTab === "cashbook" && permissions[userRole].cashbook && <CashBook transactions={transactions} students={students} accounts={accounts} masterData={masterData} userRole={userRole} onDelete={handleDeleteTransaction} onUpdate={handleUpdateTransaction} />}
+        {activeTab === "vouchers" && permissions[userRole].vouchers && <VoucherSystem onPostTransaction={handlePostTransaction} accounts={accounts} transactions={transactions} onDelete={handleDeleteTransaction} onUpdate={handleUpdateTransaction} masterData={masterData} userRole={userRole} />}
+        {activeTab === "fees" && permissions[userRole].fees && <FeeCollection students={students} onCollectFee={handlePostTransaction} masterData={masterData} accounts={accounts} currentUser={currentUser} />}
+        {activeTab === "ledger" && permissions[userRole].ledger && <StudentLedger students={students} transactions={transactions} masterData={masterData} />}
+        {activeTab === "bulk" && permissions[userRole].bulk && <FeeGenerationModule students={students} onGenerate={handleBulkGenerate} masterData={masterData} transactions={transactions} />}
+        {activeTab === "reports" && permissions[userRole].reports && <ReportsModule students={students} transactions={transactions} masterData={masterData} subTab={reportSubTab} currentUser={currentUser} studentAttendance={studentAttendance} setStudentAttendance={setStudentAttendance} />}
+        {activeTab === "financial" && permissions[userRole].financial && <FinancialStatements transactions={transactions} accounts={accounts} students={students} masterData={masterData} subTab={finSubTab} />}
+        {activeTab === "hr" && permissions[userRole].hr && <HRModule employees={employees} onAddEmployee={handleAddEmployee} onUpdateEmployee={handleUpdateEmployee} onDeleteEmployee={handleDeleteEmployee} masterData={masterData} onUpdateMasterData={handleUpdateMasterData} employeeAttendance={employeeAttendance} setEmployeeAttendance={setEmployeeAttendance} subTab={hrSubTab} />}
+        {activeTab === "inventory" && permissions[userRole].inventory && <InventoryModule inventory={inventory} setInventory={setInventory} issuances={issuances} setIssuances={setIssuances} employees={employees} masterData={masterData} currentUser={currentUser} onUpdateMasterData={handleUpdateMasterData} />}
+        {activeTab === "budget" && permissions[userRole].budget && <BudgetModule budgets={budgets} setBudgets={setBudgets} masterData={masterData} transactions={transactions} students={students} />}
+        {activeTab === "approvals" && permissions[userRole].approvals && <Approvals transactions={transactions} onApprove={handleApprove} onDelete={handleDeleteTransaction} onUpdate={handleUpdateTransaction} students={students} accounts={accounts} />}
+        {activeTab === "accounts" && permissions[userRole].accounts && <ChartOfAccounts accounts={accounts} onAddAccount={(a: Account) => setAccounts([...accounts, a])} />}
+        {activeTab === "master" && permissions[userRole].master && <MasterDataManager data={masterData} onUpdate={handleUpdateMasterData} students={students} users={users} onUpdateUsers={setUsers} roles={roles} onUpdateRoles={setRoles} feeStructures={feeStructures} onUpdateFeeStructures={setFeeStructures} />}
+        {activeTab === "access" && permissions[userRole].access && <AccessControl permissions={permissions} onUpdate={setPermissions} roles={roles} />}
+        {activeTab === "import" && permissions[userRole].import && <DataImport onImportStudents={(data: Student[]) => setStudents([...students, ...data])} onImportAccounts={(data: Account[]) => setAccounts([...accounts, ...data])} />}
+        {activeTab === "history" && permissions[userRole].history && <HistoryModule logs={auditLogs} />}
+        {activeTab === "scanner" && permissions[userRole].scanner && <FaceRecognitionScanner students={students} userRole={userRole} masterData={masterData} onAttend={handleAutoAttendance} />}
+        {activeTab === "sms" && permissions[userRole].sms && <SMSModule students={students} masterData={masterData} smsHistory={smsHistory} setSmsHistory={setSmsHistory} />}
       </div>
     </div>
   );

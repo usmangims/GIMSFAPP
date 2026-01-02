@@ -20,7 +20,7 @@ export const StudentBiodata = ({ students, onAddStudent, onDeleteStudent, onUpda
      balance: 0, address: "", district: "Peshawar", phone: "", smsNumber: "", cnic: "", board: "", remarks: "", photo: "",
      admissionFee: 0, tuitionFee: 0, miscCharges: 0, affiliationFee: 0, totalCourseFee: 0,
      dob: "", gender: "Male", nationality: "Pakistani", status: "Paid", admissionDate: new Date().toISOString().slice(0, 10),
-     recordedBy: ""
+     recordedBy: "", biometricId: ""
   });
 
   const [errors, setErrors] = useState<any>({});
@@ -331,14 +331,21 @@ export const StudentBiodata = ({ students, onAddStudent, onDeleteStudent, onUpda
                           <tr><td style={{padding: '8px', fontWeight: 'bold'}}>Board:</td><td style={{padding: '8px', borderBottom: '1px solid #eee'}}>{formData.board}</td><td style={{padding: '8px', fontWeight: 'bold'}}>Campus:</td><td style={{padding: '8px', borderBottom: '1px solid #eee'}}>{formData.campus}</td></tr>
                           <tr><td style={{padding: '8px', fontWeight: 'bold'}}>Phone:</td><td style={{padding: '8px', borderBottom: '1px solid #eee'}}>{formData.phone}</td><td style={{padding: '8px', fontWeight: 'bold'}}>District:</td><td style={{padding: '8px', borderBottom: '1px solid #eee'}}>{formData.district}</td></tr>
                           <tr><td style={{padding: '8px', fontWeight: 'bold'}}>Address:</td><td colSpan={3} style={{padding: '8px', borderBottom: '1px solid #eee'}}>{formData.address}</td></tr>
+                          <tr><td style={{padding: '8px', fontWeight: 'bold'}}>Biometric ID:</td><td colSpan={3} style={{padding: '8px', borderBottom: '1px solid #eee'}}>{formData.biometricId || '-'}</td></tr>
                       </tbody>
                   </table>
                   <h4 style={{background: '#eee', padding: '8px', borderLeft: '4px solid #000', textTransform: 'uppercase'}}>Fee Structure</h4>
                   <table style={{width: '100%', borderCollapse: 'collapse', marginBottom: '30px'}}>
                       <tbody>
                           <tr><td style={{padding: '8px', width: '20%', fontWeight: 'bold'}}>Admission Fee:</td><td style={{padding: '8px', width: '30%', borderBottom: '1px solid #eee'}}>{formData.admissionFee.toLocaleString()}</td><td style={{padding: '8px', width: '20%', fontWeight: 'bold'}}>Semester Fee:</td><td style={{padding: '8px', width: '30%', borderBottom: '1px solid #eee'}}>{formData.tuitionFee.toLocaleString()}</td></tr>
-                          <tr><td style={{padding: '8px', fontWeight: 'bold'}}>Misc Charges:</td><td style={{padding: '8px', borderBottom: '1px solid #eee'}}>{formData.miscCharges.toLocaleString()}</td><td style={{padding: '8px', fontWeight: 'bold'}}>Affiliation Fee:</td><td style={{padding: '8px', borderBottom: '1px solid #eee'}}>{formData.affiliationFee.toLocaleString()}</td></tr>
-                          <tr><td style={{padding: '8px', fontWeight: 'bold'}}>Total Course Fee:</td><td style={{padding: '8px', fontWeight: 'bold', fontSize: '1.1rem'}}>{formData.totalCourseFee.toLocaleString()}</td><td style={{padding: '8px', fontWeight: 'bold'}}>Status:</td><td style={{padding: '8px'}}>{formData.status}</td></tr>
+                          <tr><td style={{padding: '8px', fontWeight: 'bold'}}>Misc Charges:</td><td style={{padding: '8px', borderBottom: '1px solid #eee'}}>{formData.miscCharges.toLocaleString()}</td><td style={{padding: '8px', width: '20%', fontWeight: 'bold', color: '#b91c1c'}}>Concession:</td><td style={{padding: '8px', width: '30%', borderBottom: '1px solid #eee', color: '#b91c1c', fontWeight: 'bold'}}>{totalConcession.toLocaleString()}</td></tr>
+                          <tr style={{background: '#f9fafb'}}>
+                            <td style={{padding: '12px 8px', fontWeight: 'bold'}}>Total Course Fee:</td>
+                            <td style={{padding: '12px 8px', fontWeight: 'bold', fontSize: '1.2rem', color: '#166534'}}>{formData.totalCourseFee.toLocaleString()}</td>
+                            <td style={{padding: '12px 8px', fontWeight: 'bold'}}>Affiliation Fee:</td>
+                            <td style={{padding: '12px 8px', fontWeight: 'bold'}}>{formData.affiliationFee.toLocaleString()}</td>
+                          </tr>
+                          <tr><td style={{padding: '8px', fontWeight: 'bold'}}>Payment Status:</td><td colSpan={3} style={{padding: '8px'}}>{formData.status}</td></tr>
                       </tbody>
                   </table>
                   <div style={{marginTop: '60px', display: 'flex', justifyContent: 'space-between'}}>
@@ -383,14 +390,14 @@ export const StudentBiodata = ({ students, onAddStudent, onDeleteStudent, onUpda
                     <div style={{flex: 1}}><input style={styles.input} placeholder="Search by Father Name" value={searchFather} onChange={e => setSearchFather(e.target.value)} /></div>
                     <div style={{flex: 1}}><input style={styles.input} placeholder="Search by Adm No" value={searchAdm} onChange={e => setSearchAdm(e.target.value)} /></div>
                     <button style={styles.button("primary")} onClick={() => { 
-                        setFormData({ admissionNo: "", name: "", fatherName: "", program: "", semester: "1st", campus: "Main Campus", balance: 0, address: "", district: "Peshawar", phone: "", smsNumber: "", cnic: "", board: "", remarks: "", photo: "", admissionFee: 0, tuitionFee: 0, miscCharges: 0, affiliationFee: 0, totalCourseFee: 0, dob: "", gender: "Male", nationality: "Pakistani", status: "Paid", admissionDate: new Date().toISOString().slice(0, 10), recordedBy: currentUser || "Admin" });
+                        setFormData({ admissionNo: "", name: "", fatherName: "", program: "", semester: "1st", campus: "Main Campus", balance: 0, address: "", district: "Peshawar", phone: "", smsNumber: "", cnic: "", board: "", remarks: "", photo: "", admissionFee: 0, tuitionFee: 0, miscCharges: 0, affiliationFee: 0, totalCourseFee: 0, dob: "", gender: "Male", nationality: "Pakistani", status: "Paid", admissionDate: new Date().toISOString().slice(0, 10), recordedBy: currentUser || "Admin", biometricId: "" });
                         setEditMode(false); setErrors({}); setView("form"); 
                     }}>+ Add New Student</button>
                 </div>
                 
                 <table style={styles.table}>
                     <thead>
-                        <tr><th style={styles.th}>Adm No</th><th style={styles.th}>Name</th><th style={styles.th}>Father Name</th><th style={styles.th}>Program</th><th style={styles.th}>Sem</th><th style={styles.th}>Phone</th><th style={styles.th}>Recorded By</th><th style={styles.th}>Action</th></tr>
+                        <tr><th style={styles.th}>Adm No</th><th style={styles.th}>Name</th><th style={styles.th}>Father Name</th><th style={styles.th}>Program</th><th style={styles.th}>Sem</th><th style={styles.th}>Bio ID</th><th style={styles.th}>Phone</th><th style={styles.th}>Action</th></tr>
                     </thead>
                     <tbody>
                         {currentItems.map((s: Student) => (
@@ -400,8 +407,8 @@ export const StudentBiodata = ({ students, onAddStudent, onDeleteStudent, onUpda
                             <td style={styles.td}>{s.fatherName}</td>
                             <td style={styles.td}>{s.program}</td>
                             <td style={styles.td}>{s.semester}</td>
+                            <td style={styles.td}><span style={{fontWeight: 700, color: '#4f46e5'}}>{s.biometricId || '-'}</span></td>
                             <td style={styles.td}>{s.phone}</td>
-                            <td style={styles.td}><span style={{fontSize: '0.8rem', color: '#64748b', fontStyle: 'italic'}}>{s.recordedBy || '-'}</span></td>
                             <td style={styles.td}><button onClick={() => handleEdit(s)} style={{border: 'none', background: '#dbeafe', color: '#1e40af', padding: '4px 8px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.8rem'}}>View/Edit</button></td>
                             </tr>
                         ))}
@@ -465,6 +472,10 @@ export const StudentBiodata = ({ students, onAddStudent, onDeleteStudent, onUpda
                         <select style={getInputStyle('campus')} value={formData.campus} onChange={e => {setFormData({...formData, campus: e.target.value}); setErrors({...errors, campus: false});}}>
                              {availableCampuses.map((c: Campus) => <option key={c.name} value={c.name}>{c.name}</option>)}
                         </select>
+                    </div>
+                    <div>
+                        <label style={styles.label}>Biometric User ID (Machine ID)</label>
+                        <input style={{...styles.input, borderColor: '#4f46e5', background: '#f5f3ff', fontWeight: 700}} value={formData.biometricId} onChange={e => setFormData({...formData, biometricId: e.target.value})} placeholder="e.g. 1001" />
                     </div>
                     <div>
                         <label style={styles.label}>Phone No *</label>

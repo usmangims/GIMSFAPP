@@ -69,6 +69,12 @@ export type FeeStructure = {
     total: number;
 };
 
+export type BiometricSettings = {
+    machineIP: string;
+    port: string;
+    autoAttendance: boolean;
+};
+
 export const INITIAL_CAMPUSES: Campus[] = [
    { name: "Main Campus", address: "University Road, Peshawar", principal: "Dr. Ahmed", phone: "091-111222" },
    { name: "Girl Campus", address: "Hayatabad Phase 3", principal: "Ms. Sara", phone: "091-333444" },
@@ -115,7 +121,7 @@ export type Student = {
   balance: number;
   address: string;
   phone: string;
-  smsNumber: string; // Mandatory for notifications
+  smsNumber: string; 
   cnic?: string; 
   board: string;
   district?: string; 
@@ -132,6 +138,7 @@ export type Student = {
   status?: string; 
   admissionDate?: string;
   recordedBy?: string;
+  biometricId?: string;
 };
 
 export type SMSLog = {
@@ -260,6 +267,12 @@ export type InventoryIssuance = {
     signature?: string; 
 };
 
+export type AIChatMessage = {
+    role: 'user' | 'model';
+    text: string;
+    timestamp: number;
+};
+
 export const INITIAL_INVENTORY: InventoryItem[] = [
     { id: "INV-001", name: "Office Chair", category: "Furniture", totalQuantity: 50, availableQuantity: 50, condition: "New", location: "Main Campus", addedDate: "2024-01-01", addedBy: "Admin" },
     { id: "INV-002", name: "Office Table", category: "Furniture", totalQuantity: 20, availableQuantity: 20, condition: "New", location: "Main Campus", addedDate: "2024-01-01", addedBy: "Admin" },
@@ -298,10 +311,10 @@ export const INITIAL_ACCOUNTS: Account[] = [
 ];
 
 export const INITIAL_STUDENTS_DATA: Student[] = [
-  { admissionNo: "KMU-24-001", name: "Ali Khan", fatherName: "Rehman Khan", cnic: "17301-1234567-1", program: "BS Nursing", semester: "3rd", campus: "Main Campus", balance: 15000, address: "University Road, Peshawar", district: "Peshawar", phone: "0300-1234567", smsNumber: "03001234567", board: "PNC", remarks: "Regular", tuitionFee: 85000, admissionFee: 50000, miscCharges: 0, affiliationFee: 30000, totalCourseFee: 1200000, gender: "Male", nationality: "Pakistani", status: "Paid", admissionDate: "2024-01-01", dob: "2002-05-15", recordedBy: "Admin" },
-  { admissionNo: "KMU-24-002", name: "Ayesha Bibi", fatherName: "Gul Zaman", cnic: "17301-7654321-2", program: "DPT", semester: "1st", campus: "Girl Campus", balance: 0, address: "Sheikh Maltoon Town, Mardan", district: "Mardan", phone: "0312-9876543", smsNumber: "03129876543", board: "KMU", remarks: "", tuitionFee: 65000, admissionFee: 50000, miscCharges: 0, affiliationFee: 30000, totalCourseFee: 1200000, gender: "Female", nationality: "Pakistani", status: "Paid", admissionDate: "2024-01-05", dob: "2003-02-20", recordedBy: "Admin" },
-  { admissionNo: "PNC-24-001", name: "Sana Gul", fatherName: "Gul Khan", cnic: "17301-9999999-3", program: "BS Nursing", semester: "1st", campus: "Girl Campus", balance: 0, address: "Jungle Khel, Kohat", district: "Kohat", phone: "0332-1231231", smsNumber: "03321231231", board: "PNC", remarks: "Scholarship", tuitionFee: 150000, admissionFee: 0, miscCharges: 0, affiliationFee: 0, totalCourseFee: 600000, gender: "Female", nationality: "Pakistani", status: "Free", admissionDate: "2024-03-01", dob: "2004-01-01", recordedBy: "Manager" },
-  { admissionNo: "KPK-24-001", name: "Rashid Minhas", fatherName: "Minhas Khan", cnic: "17301-8888888-4", program: "Diploma Anesthesia", semester: "1st", campus: "Main Campus", balance: 10000, address: "Timergara, Lower Dir", district: "Lower Dir", phone: "0302-3453456", smsNumber: "03023453456", board: "KPK Medical Faculty", remarks: "", tuitionFee: 48000, admissionFee: 33000, miscCharges: 0, affiliationFee: 0, totalCourseFee: 225000, gender: "Male", nationality: "Pakistani", status: "Paid", admissionDate: "2024-04-01", dob: "2003-04-04", recordedBy: "Admin" },
+  { admissionNo: "KMU-24-001", name: "Ali Khan", fatherName: "Rehman Khan", cnic: "17301-1234567-1", program: "BS Nursing", semester: "3rd", campus: "Main Campus", balance: 15000, address: "University Road, Peshawar", district: "Peshawar", phone: "0300-1234567", smsNumber: "03001234567", board: "PNC", remarks: "Regular", tuitionFee: 85000, admissionFee: 50000, miscCharges: 0, affiliationFee: 30000, totalCourseFee: 1200000, gender: "Male", nationality: "Pakistani", status: "Paid", admissionDate: "2024-01-01", dob: "2002-05-15", recordedBy: "Admin", biometricId: "1001" },
+  { admissionNo: "KMU-24-002", name: "Ayesha Bibi", fatherName: "Gul Zaman", cnic: "17301-7654321-2", program: "DPT", semester: "1st", campus: "Girl Campus", balance: 0, address: "Sheikh Maltoon Town, Mardan", district: "Mardan", phone: "0312-9876543", smsNumber: "03129876543", board: "KMU", remarks: "", tuitionFee: 65000, admissionFee: 50000, miscCharges: 0, affiliationFee: 30000, totalCourseFee: 1200000, gender: "Female", nationality: "Pakistani", status: "Paid", admissionDate: "2024-01-05", dob: "2003-02-20", recordedBy: "Admin", biometricId: "1002" },
+  { admissionNo: "PNC-24-001", name: "Sana Gul", fatherName: "Gul Khan", cnic: "17301-9999999-3", program: "BS Nursing", semester: "1st", campus: "Girl Campus", balance: 0, address: "Jungle Khel, Kohat", district: "Kohat", phone: "0332-1231231", smsNumber: "03321231231", board: "PNC", remarks: "Scholarship", tuitionFee: 150000, admissionFee: 0, miscCharges: 0, affiliationFee: 0, totalCourseFee: 600000, gender: "Female", nationality: "Pakistani", status: "Free", admissionDate: "2024-03-01", dob: "2004-01-01", recordedBy: "Manager", biometricId: "1003" },
+  { admissionNo: "KPK-24-001", name: "Rashid Minhas", fatherName: "Minhas Khan", cnic: "17301-8888888-4", program: "Diploma Anesthesia", semester: "1st", campus: "Main Campus", balance: 10000, address: "Timergara, Lower Dir", district: "Lower Dir", phone: "0302-3453456", smsNumber: "03023453456", board: "KPK Medical Faculty", remarks: "", tuitionFee: 48000, admissionFee: 33000, miscCharges: 0, affiliationFee: 0, totalCourseFee: 225000, gender: "Male", nationality: "Pakistani", status: "Paid", admissionDate: "2024-04-01", dob: "2003-04-04", recordedBy: "Admin", biometricId: "1004" },
 ];
 
 export const INITIAL_EMPLOYEES_DATA: Employee[] = [

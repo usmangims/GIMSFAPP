@@ -1,7 +1,7 @@
 
 import React, { useState } from "react";
 import { styles } from "./styles";
-import { Student, User, Campus, FeeStructure } from "./types";
+import { Student, User, Campus, FeeStructure, BiometricSettings } from "./types";
 
 export const MasterDataManager = ({ data, onUpdate, students, users, onUpdateUsers, roles, onUpdateRoles, feeStructures = [], onUpdateFeeStructures }: any) => {
    const [activeTab, setActiveTab] = useState("campuses");
@@ -32,7 +32,8 @@ export const MasterDataManager = ({ data, onUpdate, students, users, onUpdateUse
        roles: "badge",
        departments: "apartment",
        inventoryCategories: "category",
-       fees: "payments"
+       fees: "payments",
+       biometric: "biometric_setup"
    };
 
    // Generic Add
@@ -132,6 +133,11 @@ export const MasterDataManager = ({ data, onUpdate, students, users, onUpdateUse
       }
    }
 
+   const handleSaveBiometric = (settings: BiometricSettings) => {
+      onUpdate('biometric', settings);
+      alert("Biometrics Settings Saved.");
+   };
+
    // --- Dynamic Fee Management ---
    const calculateTotal = (f: Partial<FeeStructure>) => {
        const adm = f.admission || 0;
@@ -213,15 +219,39 @@ export const MasterDataManager = ({ data, onUpdate, students, users, onUpdateUse
          <div style={{backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)', overflow: 'hidden'}}>
             {/* Tabs Header */}
             <div style={{display: 'flex', overflowX: 'auto', background: '#f8fafc', borderBottom: '1px solid #e2e8f0', padding: '0 10px'}}>
-               {['campuses', 'users', 'fees', 'boards', 'programs', 'semesters', 'departments', 'inventoryCategories', 'roles', 'sessions'].map(tab => (
+               {['campuses', 'users', 'fees', 'biometric', 'boards', 'programs', 'semesters', 'departments', 'inventoryCategories', 'roles', 'sessions'].map(tab => (
                   <React.Fragment key={tab}>
-                     <TabButton id={tab} label={tab === 'fees' ? 'Fee Structures' : tab.replace(/([A-Z])/g, ' $1').trim()} />
+                     <TabButton id={tab} label={tab === 'fees' ? 'Fee Structures' : tab === 'biometric' ? 'Biometrics' : tab.replace(/([A-Z])/g, ' $1').trim()} />
                   </React.Fragment>
                ))}
             </div>
 
             <div style={{padding: '30px'}}>
             
+            {/* BIOMETRIC TAB */}
+            {activeTab === 'biometric' && (
+                <div style={{maxWidth: '500px'}}>
+                    <h3 style={{marginTop: 0, color: '#0f172a'}}>Biometrics Connection</h3>
+                    <p style={{fontSize: '0.85rem', color: '#64748b', marginBottom: '25px'}}>Configure the connection to your hardware ZKTeco machine.</p>
+                    <div style={{display: 'flex', flexDirection: 'column', gap: '20px'}}>
+                        <div>
+                            <label style={styles.label}>Machine IP Address</label>
+                            <input style={styles.input} value={data.biometric.machineIP} onChange={e => handleSaveBiometric({...data.biometric, machineIP: e.target.value})} placeholder="e.g. 192.168.1.201" />
+                        </div>
+                        <div>
+                            <label style={styles.label}>Connection Port</label>
+                            <input style={styles.input} value={data.biometric.port} onChange={e => handleSaveBiometric({...data.biometric, port: e.target.value})} placeholder="e.g. 4370" />
+                        </div>
+                        <div style={{padding: '15px', background: '#f0fdf4', borderRadius: '8px', border: '1px solid #bbf7d0'}}>
+                            <label style={{display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer'}}>
+                                <input type="checkbox" checked={data.biometric.autoAttendance} onChange={e => handleSaveBiometric({...data.biometric, autoAttendance: e.target.checked})} style={{width: '18px', height: '18px'}} />
+                                <span style={{fontWeight: 600, color: '#166534'}}>Automatically mark attendance on scan</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* FEE STRUCTURES TAB */}
             {activeTab === 'fees' && (
                 <div>
@@ -449,7 +479,7 @@ export const MasterDataManager = ({ data, onUpdate, students, users, onUpdateUse
             )}
 
             {/* GENERIC LISTS TABS */}
-            {!['campuses', 'users', 'fees'].includes(activeTab) && (
+            {!['campuses', 'users', 'fees', 'biometric'].includes(activeTab) && (
                <div>
                   <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px'}}>
                       <h3 style={{margin: 0, color: '#334155', textTransform: 'capitalize'}}>Manage {activeTab.replace(/([A-Z])/g, ' $1').trim()}</h3>

@@ -26,7 +26,7 @@ export const VoucherSystem = ({ onPostTransaction, accounts, transactions, onDel
   const cashAccName = accounts.find(a => a.code === CASH_ACC)?.name || "Cash in Hand";
   const bankAccName = accounts.find(a => a.code === BANK_ACC)?.name || "Bank Account";
 
-  // Show only Name in dropdown as requested
+  // Level 3 Ledger Accounts for dropdowns
   const level3 = accounts.filter(a => a.level === 3).map(a => ({ value: a.code, label: a.name }));
 
   // Helper to convert Number to Words
@@ -50,10 +50,8 @@ export const VoucherSystem = ({ onPostTransaction, accounts, transactions, onDel
   useEffect(() => {
      if(mode === 'entry' && !editMode) {
         if(type === 'CPV') {
-           // Credit is Cash (Fixed), Debit is User Select
            setRows([{ drAcc: "", crAcc: CASH_ACC, amount: 0, narration: "" }]);
         } else if (type === 'CRV') {
-           // Debit is Cash (Fixed), Credit is User Select
            setRows([{ drAcc: CASH_ACC, crAcc: "", amount: 0, narration: "" }]);
         } else if (type === 'BPV') {
            setRows([{ drAcc: "", crAcc: BANK_ACC, amount: 0, narration: "" }]);
@@ -64,7 +62,7 @@ export const VoucherSystem = ({ onPostTransaction, accounts, transactions, onDel
         }
         setSelectedDept("");
      }
-  }, [type, mode]);
+  }, [type, mode, editMode]);
 
   const handleSearchVoucher = () => {
      if(!searchVoucher) return;
@@ -116,34 +114,27 @@ export const VoucherSystem = ({ onPostTransaction, accounts, transactions, onDel
 
   const handlePost = () => {
     if(rows.some(r => !r.amount || !r.narration || !r.drAcc || !r.crAcc)) return alert("Please complete all rows with valid Debit and Credit accounts.");
-    
-    // Require Department for Payments
-    if((type === 'CPV' || type === 'BPV') && !selectedDept) {
-        return alert("Please select a Department for expense tracking.");
-    }
+    if((type === 'CPV' || type === 'BPV') && !selectedDept) return alert("Please select a Department for expense tracking.");
 
     const voucherNo = editMode ? editVoucherId : `VCH-${Date.now()}`; 
-    
     if(editMode) {
        const oldTxns = transactions.filter(t => t.voucherNo === voucherNo);
        oldTxns.forEach(t => onDelete(t, false));
     }
 
-    const newTransactions = rows.map((r, i) => {
-       return {
-          id: `${voucherNo}-${i}-${Date.now()}`,
-          voucherNo: voucherNo,
-          date,
-          type,
-          description: r.narration,
-          debitAccount: r.drAcc,
-          creditAccount: r.crAcc,
-          amount: r.amount,
-          chequeNo: (type === 'BPV' || type === 'BRP') ? chequeNo : undefined,
-          status: 'Posted',
-          department: selectedDept // Link transaction to dept
-       };
-    });
+    const newTransactions = rows.map((r, i) => ({
+        id: `${voucherNo}-${i}-${Date.now()}`,
+        voucherNo: voucherNo,
+        date,
+        type,
+        description: r.narration,
+        debitAccount: r.drAcc,
+        creditAccount: r.crAcc,
+        amount: r.amount,
+        chequeNo: (type === 'BPV' || type === 'BRP') ? chequeNo : undefined,
+        status: 'Posted' as const,
+        department: selectedDept
+    }));
 
     newTransactions.forEach((t: any) => onPostTransaction(t));
     setPostSuccess(true);
@@ -154,11 +145,7 @@ export const VoucherSystem = ({ onPostTransaction, accounts, transactions, onDel
      if(editVoucherId) {
         const txns = transactions.filter(t => t.voucherNo === editVoucherId);
         if(txns.length === 0) return alert("Voucher not found.");
-
-        if(txns.some(t => t.status === 'DeletePending')) {
-            alert("Deletion for this voucher is already pending approval.");
-            return;
-        }
+        if(txns.some(t => t.status === 'DeletePending')) return alert("Deletion for this voucher is already pending approval.");
 
         const isManager = userRole === "Admin" || userRole === "Finance Manager";
         const msg = isManager 
@@ -166,7 +153,6 @@ export const VoucherSystem = ({ onPostTransaction, accounts, transactions, onDel
             : `Are you sure you want to REQUEST DELETION for Voucher ${editVoucherId}?`;
 
         if(window.confirm(msg)) {
-           // Pass !isManager as isRequest (if not manager, isRequest=true)
            txns.forEach(t => onDelete(t, !isManager));
            setMode("select");
            setEditMode(false);
@@ -175,7 +161,6 @@ export const VoucherSystem = ({ onPostTransaction, accounts, transactions, onDel
      }
   }
 
-  // Helper to check fixed fields
   const getFixedAccountName = (type: string, side: 'Dr' | 'Cr') => {
       if(type === 'CPV' && side === 'Cr') return cashAccName;
       if(type === 'CRV' && side === 'Dr') return cashAccName;
@@ -190,8 +175,10 @@ export const VoucherSystem = ({ onPostTransaction, accounts, transactions, onDel
       style={{
         backgroundColor: "white", padding: "30px", borderRadius: "12px", border: "1px solid #e2e8f0", 
         cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-        boxShadow: "0 1px 3px rgba(0,0,0,0.05)", transition: "transform 0.2s", minHeight: "160px"
+        boxShadow: "0 1px 3px rgba(0,0,0,0.05)", transition: "all 0.2s", minHeight: "160px"
       }}
+      onMouseOver={e => { e.currentTarget.style.transform = 'translateY(-4px)'; e.currentTarget.style.borderColor = color; }}
+      onMouseOut={e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.borderColor = '#e2e8f0'; }}
     >
       <div style={{padding: "16px", borderRadius: "12px", backgroundColor: bg, color: color, marginBottom: "16px"}}>
          <span className="material-symbols-outlined" style={{fontSize: "32px"}}>{icon}</span>
@@ -209,7 +196,7 @@ export const VoucherSystem = ({ onPostTransaction, accounts, transactions, onDel
             <div style={{...styles.modalContent, width: '210mm', height: '90vh', backgroundColor: 'white', padding: '40px'}}>
                <div style={{display: 'flex', justifyContent: 'flex-end', marginBottom: '20px'}} className="no-print">
                    <button style={styles.button("primary")} onClick={() => window.print()}>Print</button>
-                   <button style={{...styles.button("secondary"), marginLeft: '10px'}} onClick={() => { setShowPrint(false); }}>Close</button>
+                   <button style={{...styles.button("secondary"), marginLeft: '10px'}} onClick={() => setShowPrint(false)}>Close</button>
                </div>
                
                <div id="printable-area" style={{border: '2px solid #000', padding: '20px', height: '100%', position: 'relative'}}>
@@ -245,7 +232,6 @@ export const VoucherSystem = ({ onPostTransaction, accounts, transactions, onDel
                               const crName = accounts.find(a => a.code === r.crAcc)?.name || r.crAcc;
                               return (
                                   <React.Fragment key={i}>
-                                      {/* Debit Entry */}
                                       <tr style={{borderBottom: '1px solid #eee'}}>
                                           <td style={{padding: '8px'}}>
                                               <div style={{fontWeight: 600}}>{drName} (Dr)</div>
@@ -255,7 +241,6 @@ export const VoucherSystem = ({ onPostTransaction, accounts, transactions, onDel
                                           <td style={{textAlign: 'right', padding: '8px'}}>{r.amount.toLocaleString()}</td>
                                           <td style={{textAlign: 'right', padding: '8px'}}>-</td>
                                       </tr>
-                                      {/* Credit Entry */}
                                       <tr style={{borderBottom: '1px solid #eee'}}>
                                           <td style={{padding: '8px', paddingLeft: '40px'}}>
                                               <div style={{fontWeight: 600}}>To: {crName} (Cr)</div>
@@ -270,13 +255,13 @@ export const VoucherSystem = ({ onPostTransaction, accounts, transactions, onDel
                           <tr style={{borderTop: '2px solid #000', fontWeight: 700, fontSize: '1.1rem'}}>
                               <td colSpan={2} style={{padding: '10px'}}>Total Amount</td>
                               <td style={{textAlign: 'right', padding: '10px'}}></td>
-                              <td style={{textAlign: 'right', padding: '10px'}}>{rows.reduce((acc, r) => acc + r.amount, 0).toLocaleString()}</td>
+                              <td style={{textAlign: 'right', padding: '10px'}}>{total.toLocaleString()}</td>
                           </tr>
                       </tbody>
                   </table>
                   
                   <div style={{marginTop: '40px', fontStyle: 'italic'}}>
-                      <strong>Amount in words:</strong> {numberToWords(rows.reduce((acc, r) => acc + r.amount, 0))} Rupees Only.
+                      <strong>Amount in words:</strong> {numberToWords(total)} Rupees Only.
                   </div>
 
                   <div style={{position: 'absolute', bottom: '40px', left: '20px', right: '20px', display: 'flex', justifyContent: 'space-between'}}>
@@ -312,7 +297,6 @@ export const VoucherSystem = ({ onPostTransaction, accounts, transactions, onDel
     )
   }
 
-  // --- VIEW MODE ---
   if (mode === "view") {
       const total = rows.reduce((s, r) => s + r.amount, 0);
       return (
@@ -381,9 +365,8 @@ export const VoucherSystem = ({ onPostTransaction, accounts, transactions, onDel
          <h2 style={{margin: 0}}>Voucher Entry <span style={{fontSize: '1rem', fontWeight: 400, color: '#94a3b8'}}>| {type} {editMode && "(EDIT MODE)"}</span></h2>
        </div>
 
-       <div style={{...styles.card, padding: '0', overflow: 'hidden', border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.05)'}}>
-          {/* Header Bar */}
-          <div style={{padding: '25px', background: '#f8fafc', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+       <div style={{...styles.card, padding: '0', overflow: 'visible', border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.05)'}}>
+          <div style={{padding: '25px', background: '#f8fafc', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderRadius: '12px 12px 0 0'}}>
              <div style={{display: 'flex', gap: '30px', alignItems: 'center'}}>
                <div>
                   <label style={{fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', marginBottom: '4px', display: 'block'}}>Voucher Date</label>
@@ -411,12 +394,11 @@ export const VoucherSystem = ({ onPostTransaction, accounts, transactions, onDel
              </div>
              <div style={{textAlign: 'right'}}>
                 <div style={{fontSize: '0.8rem', color: '#64748b', textTransform: 'uppercase'}}>Total Amount</div>
-                <div style={{fontSize: '1.8rem', fontWeight: 800, color: '#059669'}}>Rs {totalAmount.toLocaleString()}</div>
+                <div style={{fontSize: '1.8rem', fontWeight: 800, color: '#4f46e5'}}>Rs {totalAmount.toLocaleString()}</div>
              </div>
           </div>
 
           <div style={{padding: '30px', backgroundColor: 'white'}}>
-            {/* Table Header */}
             <div style={{display: 'flex', gap: '15px', padding: '0 15px 15px 15px', borderBottom: '2px solid #f1f5f9', marginBottom: '15px'}}>
                 <div style={{width: '30px', fontSize: '0.75rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase'}}>#</div>
                 <div style={{flex: 1, fontSize: '0.75rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase'}}>Debit Account</div>
@@ -427,29 +409,44 @@ export const VoucherSystem = ({ onPostTransaction, accounts, transactions, onDel
             </div>
 
             {rows.map((r, i) => (
-              <div key={i} style={{display: 'flex', gap: '15px', marginBottom: '10px', alignItems: 'center', background: '#f8fafc', padding: '15px', borderRadius: '12px', border: '1px solid #f1f5f9', transition: 'all 0.2s', boxShadow: '0 1px 2px rgba(0,0,0,0.02)'}}>
+              <div key={i} style={{
+                display: 'flex', gap: '15px', marginBottom: '12px', alignItems: 'center', 
+                background: '#f8fafc', padding: '15px', borderRadius: '12px', 
+                border: '1px solid #f1f5f9', transition: 'all 0.2s', 
+                boxShadow: '0 1px 2px rgba(0,0,0,0.02)',
+                position: 'relative',
+                zIndex: rows.length - i // Important for dropdown visibility
+              }}>
                  <div style={{width: '30px', color: '#cbd5e1', fontWeight: 800, fontSize: '1rem'}}>{i + 1}</div>
                  
                  <div style={{flex: 1}}>
                     {(type === 'CRV' || type === 'BRP') ? 
-                        <div style={{padding: '10px', background: '#e2e8f0', borderRadius: '6px', fontWeight: 600, color: '#475569', fontSize: '0.9rem'}}>{getFixedAccountName(type, 'Dr')}</div> :
+                        <div style={{
+                            padding: '0 12px', background: '#e2e8f0', borderRadius: '8px', 
+                            fontWeight: 700, color: '#475569', fontSize: '0.9rem',
+                            height: '42px', display: 'flex', alignItems: 'center', border: '1px solid #cbd5e1'
+                        }}>{getFixedAccountName(type, 'Dr')}</div> :
                         <SearchableSelect options={level3} value={r.drAcc} onChange={(v:any) => updateRow(i, 'drAcc', v)} placeholder="Select Dr Account" />
                     }
                  </div>
                  
                  <div style={{flex: 1}}>
                      {(type === 'CPV' || type === 'BPV') ?
-                         <div style={{padding: '10px', background: '#e2e8f0', borderRadius: '6px', fontWeight: 600, color: '#475569', fontSize: '0.9rem'}}>{getFixedAccountName(type, 'Cr')}</div> :
+                         <div style={{
+                            padding: '0 12px', background: '#e2e8f0', borderRadius: '8px', 
+                            fontWeight: 700, color: '#475569', fontSize: '0.9rem',
+                            height: '42px', display: 'flex', alignItems: 'center', border: '1px solid #cbd5e1'
+                        }}>{getFixedAccountName(type, 'Cr')}</div> :
                          <SearchableSelect options={level3} value={r.crAcc} onChange={(v:any) => updateRow(i, 'crAcc', v)} placeholder="Select Cr Account" />
                      }
                  </div>
                  
                  <div style={{width: '180px'}}>
                     <div style={{position: 'relative'}}>
-                        <span style={{position: 'absolute', left: '12px', top: '10px', fontSize: '0.9rem', color: '#94a3b8'}}>Rs</span>
+                        <span style={{position: 'absolute', left: '12px', top: '10px', fontSize: '0.9rem', color: '#94a3b8', fontWeight: 600}}>Rs</span>
                         <input 
                             type="number" 
-                            style={{...styles.input, paddingLeft: '35px', textAlign: 'right', fontWeight: 700, fontSize: '1rem', color: '#0f172a', borderColor: r.amount > 0 ? '#10b981' : '#e2e8f0', background: 'white'}} 
+                            style={{...styles.input, height: '42px', paddingLeft: '35px', textAlign: 'right', fontWeight: 700, fontSize: '1rem', color: '#0f172a', borderColor: r.amount > 0 ? '#4f46e5' : '#cbd5e1', background: 'white'}} 
                             value={r.amount} 
                             onChange={e => updateRow(i, 'amount', Number(e.target.value))} 
                             placeholder="0.00" 
@@ -458,7 +455,7 @@ export const VoucherSystem = ({ onPostTransaction, accounts, transactions, onDel
                  </div>
                  
                  <div style={{flex: 1.5}}>
-                    <input style={{...styles.input, background: 'white'}} value={r.narration} onChange={e => updateRow(i, 'narration', e.target.value)} placeholder="Description..." />
+                    <input style={{...styles.input, height: '42px', background: 'white'}} value={r.narration} onChange={e => updateRow(i, 'narration', e.target.value)} placeholder="Enter details..." />
                  </div>
 
                  <div style={{width: '40px', display: 'flex', justifyContent: 'center'}}>
@@ -468,8 +465,8 @@ export const VoucherSystem = ({ onPostTransaction, accounts, transactions, onDel
             ))}
 
             <div style={{marginTop: '30px', display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
-               <button style={{background: 'white', border: '2px dashed #cbd5e1', padding: '10px 20px', borderRadius: '8px', color: '#64748b', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', transition: 'all 0.2s'}} onClick={addRow}>
-                   <span className="material-symbols-outlined" style={{fontSize: '20px'}}>add_circle</span> Add Another Line
+               <button style={{background: 'white', border: '2px dashed #cbd5e1', padding: '10px 20px', borderRadius: '8px', color: '#4f46e5', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', transition: 'all 0.2s'}} onClick={addRow}>
+                   <span className="material-symbols-outlined" style={{fontSize: '20px'}}>add_circle</span> Add Another Entry
                </button>
                
                <div style={{display: 'flex', gap: '15px'}}>
@@ -478,7 +475,7 @@ export const VoucherSystem = ({ onPostTransaction, accounts, transactions, onDel
                           <span className="material-symbols-outlined">print</span> Print Voucher
                       </button>
                   ) : (
-                      <button style={{...styles.button("primary"), padding: '12px 40px', fontSize: '1rem', borderRadius: '8px', boxShadow: '0 4px 12px rgba(5, 150, 105, 0.25)'}} onClick={handlePost}>
+                      <button style={{...styles.button("primary"), padding: '12px 40px', fontSize: '1rem', borderRadius: '8px', boxShadow: '0 4px 12px rgba(79, 70, 229, 0.3)'}} onClick={handlePost}>
                           {editMode ? "Update Transaction" : "Post Transaction"}
                       </button>
                   )}

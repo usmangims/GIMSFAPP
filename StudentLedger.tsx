@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from "react";
 import { styles } from "./styles";
 import { Transaction, Student } from "./types";
@@ -80,7 +81,16 @@ export const StudentLedger = ({ students, transactions, masterData }: { students
       (window as any).html2pdf().from(element).set(opt).save();
    };
 
-   let ledgerData: any = { rows: [], totalBilled: 0, totalPaid: 0, balance: 0 };
+   let ledgerData: any = { 
+      rows: [], 
+      regFee: 0,
+      examFee: 0,
+      trainingFee: 0,
+      totalLiability: 0, 
+      totalPaid: 0, 
+      balance: 0 
+   };
+
    if(selectedStudent) {
       const studTxns = transactions.filter(t => t.studentId === selectedStudent.admissionNo && t.status === "Posted")
          .sort((a,b) => {
@@ -91,15 +101,25 @@ export const StudentLedger = ({ students, transactions, masterData }: { students
       let runningBalance = 0;
       ledgerData.rows = studTxns.map(t => {
          let dr = 0; let cr = 0;
-         if (t.debitAccount === '1-01-004' || t.type === 'FEE_DUE') dr = t.amount;
-         else if (t.creditAccount === '1-01-004' || t.type === 'FEE_RCV' || t.type === 'FEE') cr = t.amount;
+         if (t.debitAccount === '1-01-004' || t.type === 'FEE_DUE') {
+            dr = t.amount;
+            // Aggregating head-specific totals
+            if (t.details) {
+               ledgerData.regFee += (t.details.registration || 0);
+               ledgerData.examFee += (t.details.exam || 0);
+               ledgerData.trainingFee += (t.details.hospital || 0); // Training Fee is Hospital Fee
+            }
+         }
+         else if (t.creditAccount === '1-01-004' || t.type === 'FEE_RCV' || t.type === 'FEE') {
+            cr = t.amount;
+         }
          
          runningBalance += (dr - cr);
-         ledgerData.totalBilled += dr;
+         ledgerData.totalLiability += dr;
          ledgerData.totalPaid += cr;
          return { ...t, dr, cr, balance: runningBalance };
       });
-      ledgerData.balance = ledgerData.totalBilled - ledgerData.totalPaid;
+      ledgerData.balance = ledgerData.totalLiability - ledgerData.totalPaid;
    }
 
    const PrintPreviewModal = () => (
@@ -139,18 +159,30 @@ export const StudentLedger = ({ students, transactions, masterData }: { students
                   </div>
                </div>
 
-               <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '20px', marginBottom: '30px'}}>
-                  <div style={{padding: '20px', border: '1px solid #cbd5e1', borderRadius: '10px', textAlign: 'center'}}>
-                     <div style={{fontSize: '0.75rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase'}}>Total Billed</div>
-                     <div style={{fontSize: '1.5rem', fontWeight: 800, color: '#1e293b'}}>Rs {ledgerData.totalBilled.toLocaleString()}</div>
+               <div style={{display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '15px', marginBottom: '30px'}}>
+                  <div style={{padding: '12px', border: '1px solid #cbd5e1', borderRadius: '8px', textAlign: 'center'}}>
+                     <div style={{fontSize: '0.7rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase'}}>Registration Fee</div>
+                     <div style={{fontSize: '1.1rem', fontWeight: 700}}>Rs {ledgerData.regFee.toLocaleString()}</div>
                   </div>
-                  <div style={{padding: '20px', border: '1px solid #cbd5e1', borderRadius: '10px', textAlign: 'center'}}>
-                     <div style={{fontSize: '0.75rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase'}}>Total Paid</div>
-                     <div style={{fontSize: '1.5rem', fontWeight: 800, color: '#166534'}}>Rs {ledgerData.totalPaid.toLocaleString()}</div>
+                  <div style={{padding: '12px', border: '1px solid #cbd5e1', borderRadius: '8px', textAlign: 'center'}}>
+                     <div style={{fontSize: '0.7rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase'}}>Examination Fee</div>
+                     <div style={{fontSize: '1.1rem', fontWeight: 700}}>Rs {ledgerData.examFee.toLocaleString()}</div>
                   </div>
-                  <div style={{padding: '20px', border: '2px solid #0f172a', borderRadius: '10px', textAlign: 'center', background: '#f8fafc'}}>
-                     <div style={{fontSize: '0.75rem', fontWeight: 700, color: '#0f172a', textTransform: 'uppercase'}}>Current Balance</div>
-                     <div style={{fontSize: '1.5rem', fontWeight: 800, color: ledgerData.balance > 0 ? '#b91c1c' : '#166534'}}>Rs {ledgerData.balance.toLocaleString()}</div>
+                  <div style={{padding: '12px', border: '1px solid #cbd5e1', borderRadius: '8px', textAlign: 'center'}}>
+                     <div style={{fontSize: '0.7rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase'}}>Training Fee</div>
+                     <div style={{fontSize: '1.1rem', fontWeight: 700}}>Rs {ledgerData.trainingFee.toLocaleString()}</div>
+                  </div>
+                  <div style={{padding: '12px', border: '1px solid #cbd5e1', borderRadius: '8px', textAlign: 'center', background: '#f8fafc'}}>
+                     <div style={{fontSize: '0.7rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase'}}>Total Liability</div>
+                     <div style={{fontSize: '1.1rem', fontWeight: 800}}>Rs {ledgerData.totalLiability.toLocaleString()}</div>
+                  </div>
+                  <div style={{padding: '12px', border: '1px solid #cbd5e1', borderRadius: '8px', textAlign: 'center', background: '#f0fdf4'}}>
+                     <div style={{fontSize: '0.7rem', fontWeight: 700, color: '#166534', textTransform: 'uppercase'}}>Paid Fee</div>
+                     <div style={{fontSize: '1.1rem', fontWeight: 800, color: '#166534'}}>Rs {ledgerData.totalPaid.toLocaleString()}</div>
+                  </div>
+                  <div style={{padding: '12px', border: '2px solid #0f172a', borderRadius: '8px', textAlign: 'center', background: '#fff1f2'}}>
+                     <div style={{fontSize: '0.7rem', fontWeight: 700, color: '#b91c1c', textTransform: 'uppercase'}}>Remaining Balance</div>
+                     <div style={{fontSize: '1.1rem', fontWeight: 800, color: '#b91c1c'}}>Rs {ledgerData.balance.toLocaleString()}</div>
                   </div>
                </div>
 
@@ -239,16 +271,28 @@ export const StudentLedger = ({ students, transactions, masterData }: { students
                <div style={styles.card}>
                   <div style={{display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '15px', marginBottom: '25px'}}>
                      <div style={{padding: '15px', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0', textAlign: 'center'}}>
-                        <div style={{fontSize: '0.7rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 700}}>Total Billed</div>
-                        <div style={{fontSize: '1.2rem', fontWeight: 800}}>Rs {ledgerData.totalBilled.toLocaleString()}</div>
+                        <div style={{fontSize: '0.7rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 700}}>Registration Fee</div>
+                        <div style={{fontSize: '1.2rem', fontWeight: 800}}>Rs {ledgerData.regFee.toLocaleString()}</div>
+                     </div>
+                     <div style={{padding: '15px', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0', textAlign: 'center'}}>
+                        <div style={{fontSize: '0.7rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 700}}>Examination Fee</div>
+                        <div style={{fontSize: '1.2rem', fontWeight: 800}}>Rs {ledgerData.examFee.toLocaleString()}</div>
+                     </div>
+                     <div style={{padding: '15px', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0', textAlign: 'center'}}>
+                        <div style={{fontSize: '0.7rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 700}}>Training Fee</div>
+                        <div style={{fontSize: '1.2rem', fontWeight: 800}}>Rs {ledgerData.trainingFee.toLocaleString()}</div>
+                     </div>
+                     <div style={{padding: '15px', background: '#eff6ff', borderRadius: '8px', border: '1px solid #bfdbfe', textAlign: 'center'}}>
+                        <div style={{fontSize: '0.7rem', color: '#1e40af', textTransform: 'uppercase', fontWeight: 700}}>Total Liability</div>
+                        <div style={{fontSize: '1.2rem', fontWeight: 800, color: '#1e40af'}}>Rs {ledgerData.totalLiability.toLocaleString()}</div>
                      </div>
                      <div style={{padding: '15px', background: '#f0fdf4', borderRadius: '8px', border: '1px solid #bbf7d0', textAlign: 'center'}}>
-                        <div style={{fontSize: '0.7rem', color: '#166534', textTransform: 'uppercase', fontWeight: 700}}>Total Paid</div>
+                        <div style={{fontSize: '0.7rem', color: '#166534', textTransform: 'uppercase', fontWeight: 700}}>Paid Fee</div>
                         <div style={{fontSize: '1.2rem', fontWeight: 800, color: '#15803d'}}>Rs {ledgerData.totalPaid.toLocaleString()}</div>
                      </div>
                      <div style={{padding: '15px', background: '#fff1f2', borderRadius: '8px', border: '1px solid #fecaca', textAlign: 'center'}}>
-                        <div style={{fontSize: '0.7rem', color: '#9f1239', textTransform: 'uppercase', fontWeight: 700}}>Current Balance</div>
-                        <div style={{fontSize: '1.2rem', fontWeight: 800, color: ledgerData.balance > 0 ? '#be123c' : '#166534'}}>Rs {ledgerData.balance.toLocaleString()}</div>
+                        <div style={{fontSize: '0.7rem', color: '#9f1239', textTransform: 'uppercase', fontWeight: 700}}>Remaining Balance</div>
+                        <div style={{fontSize: '1.2rem', fontWeight: 800, color: '#be123c'}}>Rs {ledgerData.balance.toLocaleString()}</div>
                      </div>
                   </div>
 

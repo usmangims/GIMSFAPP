@@ -5,7 +5,7 @@ import { Transaction, Student, Account, Campus } from "./types";
 import { SearchableSelect } from "./SearchableSelect";
 
 export const FinancialStatements = ({ transactions, accounts, students, masterData, subTab }: any) => {
-  const [reportType, setReportType] = useState<"TB" | "IS" | "BS" | "GL" | "TS" | "BGT" | "PROG_SUM" | "BOARD_SUM" | "IE_SUM">((subTab as any) || "TB");
+  const [reportType, setReportType] = useState<"TB" | "IS" | "BS" | "GL" | "TS" | "BGT" | "PL" | "PROG_SUM" | "BOARD_SUM" | "IE_SUM">((subTab as any) || "TB");
   
   useEffect(() => { if(subTab) setReportType(subTab as any); }, [subTab]);
 
@@ -28,6 +28,27 @@ export const FinancialStatements = ({ transactions, accounts, students, masterDa
         if (t.creditAccount === accCode) return sum - t.amount;
         return sum;
       }, 0);
+  };
+
+  const handleExportPDF = (id: string, filename: string) => {
+    const element = document.getElementById(id);
+    if (!element) return;
+    const opt = {
+      margin: 10,
+      filename: `${filename}_${new Date().toISOString().slice(0,10)}.pdf`,
+      image: { type: 'jpeg', quality: 0.98 },
+      html2canvas: { scale: 2, useCORS: true },
+      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+    };
+    (window as any).html2pdf().from(element).set(opt).save();
+  };
+
+  const handleExportExcel = (tableId: string, filename: string) => {
+      const table = document.querySelector(`#${tableId} table`);
+      if (!table) return;
+      const XLSX = (window as any).XLSX;
+      const wb = XLSX.utils.table_to_book(table);
+      XLSX.writeFile(wb, `${filename}_${new Date().toISOString().slice(0,10)}.xlsx`);
   };
 
   let content = null;
@@ -198,7 +219,108 @@ export const FinancialStatements = ({ transactions, accounts, students, masterDa
     );
   }
 
-  // --- 5. Program/Board Summary ---
+  // --- 5. Profit and Loss (NEW TAB) ---
+  if (reportType === "PL") {
+    const feeIncomeAccs = accounts.filter((a:any) => a.category === "Income" && a.level === 3 && a.name.toLowerCase().includes("fee"));
+    const otherIncomeAccs = accounts.filter((a:any) => a.category === "Income" && a.level === 3 && !a.name.toLowerCase().includes("fee"));
+    
+    const salaryAccs = accounts.filter((a:any) => a.category === "Expense" && a.level === 3 && a.name.toLowerCase().includes("salar"));
+    const utilityAccs = accounts.filter((a:any) => a.category === "Expense" && a.level === 3 && (a.name.toLowerCase().includes("util") || a.name.toLowerCase().includes("bill")));
+    const otherExpenseAccs = accounts.filter((a:any) => a.category === "Expense" && a.level === 3 && !salaryAccs.includes(a) && !utilityAccs.includes(a));
+
+    const getAggregatedRows = (accList: Account[]) => accList.map(a => ({
+        name: a.name,
+        amount: Math.abs(getBalance(a.code, fromDate, toDate, a.category === 'Expense'))
+    })).filter(r => r.amount > 0);
+
+    const feeIncomeRows = getAggregatedRows(feeIncomeAccs);
+    const otherIncomeRows = getAggregatedRows(otherIncomeAccs);
+    const salaryRows = getAggregatedRows(salaryAccs);
+    const utilityRows = getAggregatedRows(utilityAccs);
+    const otherExpenseRows = getAggregatedRows(otherExpenseAccs);
+
+    const totalIncome = [...feeIncomeRows, ...otherIncomeRows].reduce((s, r) => s + r.amount, 0);
+    const totalExpense = [...salaryRows, ...utilityRows, ...otherExpenseRows].reduce((s, r) => s + r.amount, 0);
+    const netResult = totalIncome - totalExpense;
+
+    content = (
+        <div id="printable-area">
+            <div style={{textAlign: 'center', marginBottom: '30px'}}>
+                <h1 style={{textTransform: 'uppercase', fontSize: '1.8rem', color: '#0f172a', margin: '0 0 5px 0'}}>Ghazali Institute of Medical Sciences</h1>
+                <h3 style={{margin: 0, fontWeight: 600, color: '#475569'}}>Profit and Loss Account</h3>
+                <div style={{color: '#64748b', fontSize: '0.9rem', marginTop: '5px'}}>Period: <strong>{fromDate}</strong> to <strong>{toDate}</strong></div>
+            </div>
+
+            <div style={styles.grid2}>
+                {/* INCOME SIDE */}
+                <div style={{...styles.card, padding: '20px', borderTop: '4px solid #166534'}}>
+                    <h4 style={{marginTop: 0, color: '#166534', borderBottom: '2px solid #dcfce7', paddingBottom: '10px', display: 'flex', alignItems: 'center', gap: '8px'}}>
+                        <span className="material-symbols-outlined">trending_up</span> Income Details
+                    </h4>
+                    <table style={styles.table}>
+                        <thead><tr><th style={styles.th}>Particulars</th><th style={{...styles.th, textAlign: 'right'}}>Amount (Rs)</th></tr></thead>
+                        <tbody>
+                            {feeIncomeRows.length > 0 && <tr style={{background: '#f8fafc'}}><td colSpan={2} style={{...styles.td, fontWeight: 700, fontSize: '0.75rem', color: '#64748b'}}>STUDENT FEES</td></tr>}
+                            {feeIncomeRows.map((r, i) => <tr key={i}><td style={styles.td}>{r.name}</td><td style={{...styles.td, textAlign: 'right'}}>{r.amount.toLocaleString()}</td></tr>)}
+                            {otherIncomeRows.length > 0 && <tr style={{background: '#f8fafc'}}><td colSpan={2} style={{...styles.td, fontWeight: 700, fontSize: '0.75rem', color: '#64748b'}}>OTHER REVENUE</td></tr>}
+                            {otherIncomeRows.map((r, i) => <tr key={i}><td style={styles.td}>{r.name}</td><td style={{...styles.td, textAlign: 'right'}}>{r.amount.toLocaleString()}</td></tr>)}
+                        </tbody>
+                        <tfoot>
+                            <tr style={{background: '#f0fdf4', fontWeight: 800}}>
+                                <td style={styles.td}>TOTAL INCOME</td>
+                                <td style={{...styles.td, textAlign: 'right'}}>Rs {totalIncome.toLocaleString()}</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+
+                {/* EXPENSE SIDE */}
+                <div style={{...styles.card, padding: '20px', borderTop: '4px solid #b91c1c'}}>
+                    <h4 style={{marginTop: 0, color: '#b91c1c', borderBottom: '2px solid #fee2e2', paddingBottom: '10px', display: 'flex', alignItems: 'center', gap: '8px'}}>
+                        <span className="material-symbols-outlined">trending_down</span> Operating Expenses
+                    </h4>
+                    <table style={styles.table}>
+                        <thead><tr><th style={styles.th}>Particulars</th><th style={{...styles.th, textAlign: 'right'}}>Amount (Rs)</th></tr></thead>
+                        <tbody>
+                            {salaryRows.length > 0 && <tr style={{background: '#f8fafc'}}><td colSpan={2} style={{...styles.td, fontWeight: 700, fontSize: '0.75rem', color: '#64748b'}}>PAYROLL & SALARIES</td></tr>}
+                            {salaryRows.map((r, i) => <tr key={i}><td style={styles.td}>{r.name}</td><td style={{...styles.td, textAlign: 'right'}}>{r.amount.toLocaleString()}</td></tr>)}
+                            {utilityRows.length > 0 && <tr style={{background: '#f8fafc'}}><td colSpan={2} style={{...styles.td, fontWeight: 700, fontSize: '0.75rem', color: '#64748b'}}>UTILITY BILLS</td></tr>}
+                            {utilityRows.map((r, i) => <tr key={i}><td style={styles.td}>{r.name}</td><td style={{...styles.td, textAlign: 'right'}}>{r.amount.toLocaleString()}</td></tr>)}
+                            {otherExpenseRows.length > 0 && <tr style={{background: '#f8fafc'}}><td colSpan={2} style={{...styles.td, fontWeight: 700, fontSize: '0.75rem', color: '#64748b'}}>OTHER EXPENDITURE</td></tr>}
+                            {otherExpenseRows.map((r, i) => <tr key={i}><td style={styles.td}>{r.name}</td><td style={{...styles.td, textAlign: 'right'}}>{r.amount.toLocaleString()}</td></tr>)}
+                        </tbody>
+                        <tfoot>
+                            <tr style={{background: '#fef2f2', fontWeight: 800}}>
+                                <td style={styles.td}>TOTAL EXPENSE</td>
+                                <td style={{...styles.td, textAlign: 'right'}}>Rs {totalExpense.toLocaleString()}</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+
+            <div style={{marginTop: '20px', padding: '30px', borderRadius: '16px', background: netResult >= 0 ? '#ecfdf5' : '#fef2f2', border: `2px solid ${netResult >= 0 ? '#166534' : '#b91c1c'}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+                <div>
+                    <div style={{fontSize: '1rem', color: netResult >= 0 ? '#166534' : '#b91c1c', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px'}}>Net Profit / Loss Summary</div>
+                    <div style={{fontSize: '2.5rem', fontWeight: 900, color: netResult >= 0 ? '#166534' : '#b91c1c'}}>
+                        {netResult >= 0 ? 'Surplus (Profit)' : 'Deficit (Loss)'}: Rs {Math.abs(netResult).toLocaleString()}
+                    </div>
+                </div>
+                <div style={{textAlign: 'right'}}>
+                    <div style={{fontSize: '0.9rem', color: '#64748b', marginBottom: '5px'}}>Operating Margin</div>
+                    <div style={{fontSize: '1.5rem', fontWeight: 700}}>{totalIncome > 0 ? ((netResult/totalIncome)*100).toFixed(2) : 0}%</div>
+                </div>
+            </div>
+
+            <div style={{marginTop: '40px', display: 'flex', justifyContent: 'space-between'}} className="print-only">
+                <div style={{textAlign: 'center', borderTop: '1px solid #000', width: '200px', paddingTop: '10px'}}>Prepared By</div>
+                <div style={{textAlign: 'center', borderTop: '1px solid #000', width: '200px', paddingTop: '10px'}}>Director Finance</div>
+            </div>
+        </div>
+    );
+  }
+
+  // --- 6. Program/Board Summary ---
   if (reportType === "PROG_SUM" || reportType === "BOARD_SUM") {
     const isProg = reportType === "PROG_SUM";
     const groups = isProg ? masterData.programs : masterData.boards;
@@ -222,7 +344,7 @@ export const FinancialStatements = ({ transactions, accounts, students, masterDa
     );
   }
 
-  // --- 6. Inc/Exp Summary ---
+  // --- 7. Inc/Exp Summary ---
   if (reportType === "IE_SUM") {
     const categories = ["Asset", "Liability", "Equity", "Income", "Expense"];
     const catStats = categories.map(cat => {
@@ -245,7 +367,7 @@ export const FinancialStatements = ({ transactions, accounts, students, masterDa
     );
   }
 
-  // --- 7. Projected Revenue (BGT) ---
+  // --- 8. Projected Revenue (BGT) ---
   if (reportType === "BGT") {
     const totalPotential = students.reduce((sum: number, s: Student) => sum + s.totalCourseFee, 0);
     const totalCollected = postedTxns.filter((t: Transaction) => t.type === 'FEE' || t.type === 'FEE_RCV').reduce((sum: number, t: Transaction) => sum + t.amount, 0);
@@ -355,7 +477,7 @@ export const FinancialStatements = ({ transactions, accounts, students, masterDa
     );
   }
 
-  // --- 8. Transaction Summary ---
+  // --- 9. Transaction Summary ---
   if (reportType === "TS") {
     const filteredTxns = transactions.filter((t:any) => t.date >= fromDate && t.date <= toDate && t.status === "Posted" && t.type !== 'FEE_DUE');
     const displayTxns = filteredTxns.filter((t:any) => {
@@ -389,7 +511,19 @@ export const FinancialStatements = ({ transactions, accounts, students, masterDa
          ) : (
              <div style={{fontWeight: 600, color: '#475569'}}>Summary View (No Date Filter Required)</div>
          )}
-         <div style={{marginLeft: 'auto'}}><button style={styles.button("secondary")} onClick={() => window.print()}><span className="material-symbols-outlined">print</span> Print</button></div>
+         <div style={{marginLeft: 'auto', display: 'flex', gap: '10px'}}>
+             {reportType === 'PL' && (
+                 <>
+                    <button style={{...styles.button("primary"), background: '#1e293b'}} onClick={() => handleExportPDF('printable-area', 'Profit_Loss_Report')}>
+                        <span className="material-symbols-outlined">picture_as_pdf</span> PDF
+                    </button>
+                    <button style={{...styles.button("secondary"), background: '#166534', color: 'white'}} onClick={() => handleExportExcel('printable-area', 'Profit_Loss_Report')}>
+                        <span className="material-symbols-outlined">table_chart</span> Excel
+                    </button>
+                 </>
+             )}
+            <button style={styles.button("secondary")} onClick={() => window.print()}><span className="material-symbols-outlined">print</span> Print</button>
+         </div>
       </div>
       {content}
     </div>

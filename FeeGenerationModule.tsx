@@ -20,8 +20,10 @@ export const FeeGenerationModule = ({ students, onGenerate, masterData, transact
   const [selectedHead, setSelectedHead] = useState("Tuition Fee");
   const [amountOverride, setAmountOverride] = useState<number | "">("");
 
+  // History List Filters
   const [listCampus, setListCampus] = useState("All");
   const [listBoard, setListBoard] = useState("All");
+  const [listProgram, setListProgram] = useState("All");
   const [listSemester, setListSemester] = useState("All");
 
   // Pagination for Preview
@@ -112,6 +114,7 @@ export const FeeGenerationModule = ({ students, onGenerate, masterData, transact
         if(!item.student) return false;
         if(listCampus !== "All" && item.student.campus !== listCampus) return false;
         if(listBoard !== "All" && item.student.board !== listBoard) return false;
+        if(listProgram !== "All" && item.student.program !== listProgram) return false;
         if(listSemester !== "All" && item.student.semester !== listSemester) return false;
         return true;
      });
@@ -280,10 +283,42 @@ export const FeeGenerationModule = ({ students, onGenerate, masterData, transact
          </div>
       ) : (
          <div style={styles.card} id="printable-area">
-            <div className="no-print" style={{display: 'flex', gap: '15px', marginBottom: '20px', background: '#f8fafc', padding: '15px', borderRadius: '12px', border: '1px solid #e2e8f0'}}>
-               <select style={styles.input} value={listCampus} onChange={e => setListCampus(e.target.value)}><option value="All">All Campuses</option>{masterData.campuses.map((c: Campus) => <option key={c.name}>{c.name}</option>)}</select>
-               <select style={styles.input} value={listBoard} onChange={e => setListBoard(e.target.value)}><option value="All">All Boards</option>{masterData.boards.map((b: string) => <option key={b}>{b}</option>)}</select>
-               <button style={styles.button("secondary")} onClick={() => window.print()}>Print List</button>
+            <div className="no-print" style={{display: 'flex', gap: '15px', marginBottom: '20px', background: '#f8fafc', padding: '20px', borderRadius: '12px', border: '1px solid #e2e8f0', flexWrap: 'wrap', alignItems: 'end'}}>
+               <div style={{flex: 1, minWidth: '150px'}}>
+                  <label style={styles.label}>Campus</label>
+                  <select style={styles.input} value={listCampus} onChange={e => setListCampus(e.target.value)}>
+                     <option value="All">All Campuses</option>
+                     {masterData.campuses.map((c: Campus) => <option key={c.name} value={c.name}>{c.name}</option>)}
+                  </select>
+               </div>
+               <div style={{flex: 1, minWidth: '150px'}}>
+                  <label style={styles.label}>Board</label>
+                  <select style={styles.input} value={listBoard} onChange={e => setListBoard(e.target.value)}>
+                     <option value="All">All Boards</option>
+                     {masterData.boards.map((b: string) => <option key={b} value={b}>{b}</option>)}
+                  </select>
+               </div>
+               <div style={{flex: 1, minWidth: '150px'}}>
+                  <label style={styles.label}>Program</label>
+                  <select style={styles.input} value={listProgram} onChange={e => setListProgram(e.target.value)}>
+                     <option value="All">All Programs</option>
+                     {masterData.programs.map((p: string) => <option key={p} value={p}>{p}</option>)}
+                  </select>
+               </div>
+               <div style={{flex: 1, minWidth: '150px'}}>
+                  <label style={styles.label}>Semester</label>
+                  <select style={styles.input} value={listSemester} onChange={e => setListSemester(e.target.value)}>
+                     <option value="All">All Semesters</option>
+                     {masterData.semesters.map((s: string) => <option key={s} value={s}>{s}</option>)}
+                  </select>
+               </div>
+               <button style={{...styles.button("secondary"), height: '42px'}} onClick={() => window.print()}>
+                  <span className="material-symbols-outlined">print</span> Print List
+               </button>
+            </div>
+
+            <div style={{display: 'flex', justifyContent: 'space-between', marginBottom: '15px', color: '#64748b', fontSize: '0.9rem'}}>
+               <span>Showing {generatedList.length} History Records</span>
             </div>
 
             <table style={styles.table}>
@@ -293,6 +328,7 @@ export const FeeGenerationModule = ({ students, onGenerate, masterData, transact
                      <th style={styles.th}>Adm No</th>
                      <th style={styles.th}>Student Name</th>
                      <th style={styles.th}>Description</th>
+                     <th style={styles.th}>Location</th>
                      <th style={{...styles.th, textAlign: 'right'}}>Amount</th>
                   </tr>
                </thead>
@@ -301,11 +337,17 @@ export const FeeGenerationModule = ({ students, onGenerate, masterData, transact
                      <tr key={t.id}>
                         <td style={styles.td}>{t.date}</td>
                         <td style={styles.td}>{t.student?.admissionNo}</td>
-                        <td style={styles.td}>{t.student?.name}</td>
+                        <td style={{...styles.td, fontWeight: 600}}>{t.student?.name}</td>
                         <td style={styles.td}>{t.description}</td>
-                        <td style={{...styles.td, textAlign: 'right'}}>{t.amount.toLocaleString()}</td>
+                        <td style={styles.td}><span style={{fontSize: '0.8rem', color: '#64748b'}}>{t.student?.campus}</span></td>
+                        <td style={{...styles.td, textAlign: 'right', fontWeight: 700}}>Rs {t.amount.toLocaleString()}</td>
                      </tr>
                   ))}
+                  {generatedList.length === 0 && (
+                     <tr>
+                        <td colSpan={6} style={{textAlign: 'center', padding: '40px', color: '#94a3b8', fontStyle: 'italic'}}>No history records found for selected criteria.</td>
+                     </tr>
+                  )}
                </tbody>
             </table>
          </div>
